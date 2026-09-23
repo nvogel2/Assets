@@ -1,1 +1,25 @@
-
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Market America 3D Model</title>
+    <script type="module" 
+      src="https://unpkg.com/@google/model-viewer
+      /dist/model-viewer.min.js">
+    </script>
+    <style>
+      body { margin: 0; background: #0D1B3E; }
+      model-viewer {
+        width: 100vw;
+        height: 100vh;
+      }
+    </style>
+  </head>
+  <body>
+    <model-viewer
+      src="marketamerica-3d.glb"
+      auto-rotate
+      camera-controls
+      background-color="#0D1B3E">
+    </model-viewer>
+  </body>
+</html>
