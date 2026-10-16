@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Resonate Neon Emblem - 3D Model</title>
+  <script type="module" 
+    src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js">
+  </script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0d0d0d;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      background: #111111;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .title {
+      color: white;
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+    .filename {
+      color: #aaa;
+      font-size: 0.75rem;
+      margin-top: 3px;
+    }
+    .instructions {
+      color: #aaa;
+      font-size: 0.8rem;
+      text-align: right;
+    }
+    model-viewer {
+      width: 100%;
+      flex: 1;
+      background-color: #0d0d0d;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div>
+      <div class="title">Resonate Neon Emblem</div>
+      <div class="filename">resonate-neon-emblem.glb</div>
+    </div>
+    <div class="instructions">
+      Drag to Rotate | Scroll to Zoom | AR on Mobile
+    </div>
+  </header>
+
+  <model-viewer
+    src="resonate-neon-emblem.glb"
+    alt="Resonate Neon Emblem 3D Model"
+    auto-rotate
+    camera-controls
+    shadow-intensity="1"
+    ar
+    ar-modes="webxr scene-viewer quick-look"
+    loading="eager">
+  </model-viewer>
+
+</body>
+</html>
