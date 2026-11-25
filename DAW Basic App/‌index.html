@@ -1,0 +1,3337 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NickVogel Studio — Clean Audio Editor & Expressive MIDI DAW</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            claude: {
+              bg: '#18181a',
+              surface: '#222226',
+              elevated: '#2a2a2f',
+              border: '#303036',
+              borderHover: '#45454e',
+              text: '#ffffff',
+              muted: '#ffffff',
+              dim: '#ffffff',
+              accent: '#d97757',
+              accentHover: '#e3886a',
+              accentSoft: 'rgba(217, 119, 87, 0.14)',
+              sage: '#6ea887',
+              sky: '#6b9ed4',
+              amber: '#d9a457',
+              rose: '#d96b6b'
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    * {
+      box-sizing: border-box;
+      scrollbar-width: thin;
+      scrollbar-color: #383840 #18181a;
+    }
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #18181a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #383840;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #4e4e58;
+    }
+
+    body {
+      background-color: #18181a;
+      color: #ffffff;
+      font-family: 'Inter', sans-serif;
+      user-select: none;
+      overflow-x: hidden;
+    }
+
+    /* Custom sleek range sliders */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 5px;
+      border-radius: 999px;
+      background: #323239;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #ececef;
+      border: 2px solid #d97757;
+      margin-top: -4px;
+      transition: transform 0.12s ease, background-color 0.12s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.18);
+      background: #d97757;
+    }
+    input[type="range"].accent-sage::-webkit-slider-thumb {
+      border-color: #6ea887;
+    }
+    input[type="range"].accent-sage::-webkit-slider-thumb:hover {
+      background: #6ea887;
+    }
+
+    .glass-panel {
+      background: #222226;
+      border: 1px solid #303036;
+    }
+
+    .track-selected {
+      border-color: #d97757 !important;
+      box-shadow: inset 3px 0 0 #d97757;
+    }
+
+    @keyframes pulseSubtle {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.65; }
+    }
+    .recording-dot {
+      animation: pulseSubtle 1.8s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-claude-bg text-claude-text antialiased">
+
+  <!-- Hidden file inputs -->
+  <input type="file" id="audioFileInput" accept="audio/*,.wav,.mp3,.ogg,.flac,.m4a" multiple class="hidden" />
+  <input type="file" id="midiFileInput" accept=".mid,.midi,audio/midi,audio/x-midi" class="hidden" />
+
+  <!-- Top Header & Transport Bar -->
+  <header class="sticky top-0 z-30 bg-claude-surface/95 backdrop-blur border-b border-claude-border px-4 py-2.5">
+    <div class="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- Brand & Quick File Actions -->
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-claude-accentSoft border border-claude-accent/40 flex items-center justify-center text-claude-accent">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 18V5l12-2v13"></path>
+              <circle cx="6" cy="18" r="3"></circle>
+              <circle cx="18" cy="16" r="3"></circle>
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-sm font-semibold tracking-tight text-white">NickVogel Studio</h1>
+              <span class="text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-claude-elevated text-claude-accent border border-claude-border">Clean DAW</span>
+            </div>
+            <p class="text-[11px] text-white hidden sm:block">Essential audio editing & organic MIDI instruments</p>
+          </div>
+        </div>
+
+        <div class="h-6 w-px bg-claude-border mx-1 hidden md:block"></div>
+
+        <!-- Direct Import Buttons & Top-Bar Undo / Redo -->
+        <div class="flex items-center gap-1.5">
+          <button id="btnAddAudio" title="Import WAV, MP3, or OGG audio files" class="px-3 py-1.5 rounded-lg bg-claude-elevated hover:bg-[#323238] border border-claude-border hover:border-claude-borderHover text-xs font-medium text-white flex items-center gap-1.5 transition">
+            <svg class="w-3.5 h-3.5 text-claude-sky" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <span>+ Audio File</span>
+          </button>
+          <button id="btnAddMidi" title="Upload a Standard MIDI (.mid) file and assign realistic instruments" class="px-3 py-1.5 rounded-lg bg-claude-elevated hover:bg-[#323238] border border-claude-border hover:border-claude-borderHover text-xs font-medium text-white flex items-center gap-1.5 transition">
+            <svg class="w-3.5 h-3.5 text-claude-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 4v10M10 4v10M14 4v10M18 4v10"/>
+            </svg>
+            <span>+ MIDI (.mid)</span>
+          </button>
+          <button id="btnLoadDemo" title="Load an expressive multi-instrument arrangement to test right away" class="px-3 py-1.5 rounded-lg bg-claude-accentSoft hover:bg-claude-accent/25 border border-claude-accent/35 text-xs font-medium text-claude-accent flex items-center gap-1.5 transition">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            <span class="hidden sm:inline">Load Demo Session</span>
+            <span class="sm:hidden">Demo</span>
+          </button>
+
+          <div class="h-5 w-px bg-claude-border mx-0.5"></div>
+
+          <button id="btnTopUndo" title="Undo last edit or track change (Ctrl+Z)" class="px-2.5 py-1.5 rounded-lg bg-claude-elevated hover:bg-[#323238] border border-claude-border text-xs font-medium text-white disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1 transition" disabled>
+            <svg class="w-3.5 h-3.5 text-claude-amber" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
+            </svg>
+            <span>Undo</span>
+          </button>
+          <button id="btnTopRedo" title="Redo edit or track change (Ctrl+Y / Ctrl+Shift+Z)" class="px-2.5 py-1.5 rounded-lg bg-claude-elevated hover:bg-[#323238] border border-claude-border text-xs font-medium text-white disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1 transition" disabled>
+            <svg class="w-3.5 h-3.5 text-claude-sky" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/>
+            </svg>
+            <span>Redo</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Center Transport & Timecode -->
+      <div class="flex items-center gap-2 bg-claude-bg border border-claude-border rounded-xl px-2.5 py-1.5">
+        <button id="btnRewind" title="Rewind to Start (Home)" class="p-1.5 rounded-lg hover:bg-claude-elevated text-white transition">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="19 20 9 12 19 4 19 20"></polygon><line x1="5" y1="19" x2="5" y2="5"></line>
+          </svg>
+        </button>
+
+        <button id="btnPlayPause" title="Play / Pause (Spacebar)" class="px-3.5 py-1.5 rounded-lg bg-claude-accent hover:bg-claude-accentHover text-[#141416] font-semibold text-xs flex items-center gap-1.5 shadow-sm transition">
+          <svg id="iconPlay" class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          <svg id="iconPause" class="w-3.5 h-3.5 fill-current hidden" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+          <span id="labelPlayPause">Play</span>
+        </button>
+
+        <button id="btnStop" title="Stop & Return to Start" class="p-1.5 rounded-lg hover:bg-claude-elevated text-white transition">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+            <rect x="6" y="6" width="12" height="12" rx="1.5"></rect>
+          </svg>
+        </button>
+
+        <button id="btnLoop" title="Toggle Loop Playback (loops selection if active, or full song)" class="p-1.5 rounded-lg hover:bg-claude-elevated text-white transition" data-active="false">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="17 1 21 5 17 9"></polyline><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="7 23 3 19 7 15"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+          </svg>
+        </button>
+
+        <div class="h-5 w-px bg-claude-border mx-1"></div>
+
+        <!-- Digital Timecode Readout -->
+        <div class="flex items-center gap-3 px-2 font-mono">
+          <div class="flex flex-col">
+            <span class="text-[9px] uppercase tracking-wider text-white">Time</span>
+            <span id="timecodeDisplay" class="text-xs font-semibold text-white tabular-nums">00:00.00</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[9px] uppercase tracking-wider text-white">Bars:Beats</span>
+            <span id="barsBeatsDisplay" class="text-xs font-medium text-claude-accent tabular-nums">001:1</span>
+          </div>
+          <div class="flex flex-col">
+            <label for="bpmInput" class="text-[9px] uppercase tracking-wider text-white">BPM</label>
+            <input id="bpmInput" type="number" min="40" max="240" value="108" class="w-12 bg-claude-surface border border-claude-border rounded px-1 py-0.2 text-xs text-white font-mono focus:outline-none focus:border-claude-accent" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Master Volume, Meter & Export -->
+      <div class="flex items-center gap-3">
+        <div class="hidden lg:flex items-center gap-2 bg-claude-bg border border-claude-border rounded-xl px-3 py-1.5">
+          <svg class="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          </svg>
+          <input id="masterVolume" type="range" min="0" max="1.25" step="0.01" value="0.9" class="w-20" title="Master Output Volume" />
+          <!-- Peak Meter -->
+          <div class="w-24 h-2.5 bg-claude-surface rounded-full overflow-hidden border border-claude-border p-0.5 flex items-center">
+            <div id="masterMeterFill" class="h-full w-0 rounded-full bg-gradient-to-r from-claude-sage via-claude-amber to-claude-rose transition-all duration-75"></div>
+          </div>
+        </div>
+
+        <button id="btnExportWav" title="Render and download full mix as a studio-quality WAV file" class="px-3.5 py-1.5 rounded-xl bg-claude-elevated hover:bg-[#34343b] border border-claude-border hover:border-claude-accent/60 text-xs font-medium text-white flex items-center gap-1.5 transition">
+          <svg class="w-3.5 h-3.5 text-claude-sage" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span>Export WAV</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Audacity-Style Plain-English Audio Editing Toolbar -->
+  <section class="bg-claude-bg border-b border-claude-border px-4 py-2">
+    <div class="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-2">
+      
+      <!-- Left: Essential Waveform Edit Tools -->
+      <div class="flex flex-wrap items-center gap-1.5">
+        <span class="text-[11px] font-medium text-white mr-1 flex items-center gap-1">
+          <svg class="w-3.5 h-3.5 text-claude-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M2 12h3l2-7 4 14 4-10 2 3h5"/>
+          </svg>
+          Audio Edit:
+        </span>
+
+        <button id="btnEditTrim" title="Keep only the highlighted selection and remove everything outside it" class="edit-tool-btn px-2.5 py-1 rounded-lg bg-claude-surface hover:bg-claude-elevated border border-claude-border text-xs text-white disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1 transition">
+          <span>Trim to Selection</span>
+        </button>
+
+        <button id="btnEditCut" title="Delete the highlighted region and close the gap" class="edit-tool-btn px-2.5 py-1 rounded-lg bg-claude-surface hover:bg-claude-elevated border border-claude-border text-xs text-white disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1 transition">
+          <span>Cut</span>
+        </button>
+
+        <button id="btnEditSilence" title="Mute/zero out audio inside the highlighted region without shifting timing" class="edit-tool-btn px-2.5 py-1 rounded-lg bg-claude-surface hover:bg-claude-elevated border border-claude-border text-xs text-white disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1 transition">
+          <span>Silence</span>
+        </button>
+
+        <div class="h-4 w-px bg-claude-border mx-0.5"></div>
+
+        <button id="btnEditFadeIn" title="Smoothly ramp volume up across the selected region (or first 1.5s if no selection)" class="edit-tool-btn px-2.5 py-1 rounded-lg bg-claude-surface hover:bg-claude-elevated border border-claude-border text-xs text-white disabled:opacity-40 disabled:pointer-events-none transition">
+          <span>Fade In</span>
+        </button>
+
+        <button id="btnEditFadeOut" title="Smoothly ramp volume down across the selected region (or last 1.5s if no selection)" class="edit-tool-btn px-2.5 py-1 rounded-lg bg-claude-surface hover:bg-claude-elevated border border-claude-border text-xs text-white disabled:opacity-40 disabled:pointer-events-none transition">
+          <span>Fade Out</span>
+        </button>
+
+        <button id="btnEditNormalize" title="Boost or attenuate peak level cleanly to -1.0 dB without clipping" class="edit-tool-btn px-2.5 py-1 rounded-lg bg-claude-surface hover:bg-claude-elevated border border-claude-border text-xs text-white disabled:opacity-40 disabled:pointer-events-none transition">
+          <span>Normalize (-1 dB)</span>
+        </button>
+
+        <div class="h-4 w-px bg-claude-border mx-0.5"></div>
+
+        <button id="btnEditUndo" title="Undo last edit or track change (Ctrl+Z)" class="px-2.5 py-1 rounded-lg bg-claude-surface hover:bg-claude-elevated border border-claude-border text-xs text-claude-amber disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1 transition" disabled>
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
+          </svg>
+          <span>Undo</span>
+        </button>
+
+        <button id="btnEditRedo" title="Redo edit or track change (Ctrl+Y / Ctrl+Shift+Z)" class="px-2.5 py-1 rounded-lg bg-claude-surface hover:bg-claude-elevated border border-claude-border text-xs text-claude-sky disabled:opacity-40 disabled:pointer-events-none flex items-center gap-1 transition" disabled>
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/>
+          </svg>
+          <span>Redo</span>
+        </button>
+      </div>
+
+      <!-- Right: Selection Info & Timeline Zoom -->
+      <div class="flex items-center gap-3">
+        <div id="selectionBadge" class="text-[11px] font-mono text-white bg-claude-surface px-2.5 py-1 rounded-lg border border-claude-border">
+          No region selected — drag across any waveform to select
+        </div>
+
+        <div class="flex items-center gap-1 bg-claude-surface border border-claude-border rounded-lg px-2 py-1">
+          <button id="btnZoomOut" title="Zoom Out Timeline" class="px-1.5 text-xs font-mono text-white hover:text-claude-accent">−</button>
+          <span id="zoomLabel" class="text-[11px] font-mono text-white w-11 text-center">100%</span>
+          <button id="btnZoomIn" title="Zoom In Timeline" class="px-1.5 text-xs font-mono text-white hover:text-claude-accent">+</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Workspace: Multi-Track Timeline (Left) + Context Inspector & DSP Rack (Right) -->
+  <main class="flex-1 max-w-[1600px] w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-4 p-4">
+    
+    <!-- Left 8/9 Columns: Multi-Track Arrangement & Waveform/MIDI Canvas -->
+    <div class="lg:col-span-8 xl:col-span-9 flex flex-col gap-3 min-w-0">
+      
+      <!-- Timeline Ruler Header -->
+      <div class="glass-panel rounded-xl overflow-hidden flex flex-col">
+        <div class="flex border-b border-claude-border bg-[#1d1d21]">
+          <div class="w-56 sm:w-64 shrink-0 px-3 py-2 border-r border-claude-border flex items-center justify-between gap-2">
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-white">Tracks (<span id="trackCount">0</span>)</span>
+            <div class="flex items-center gap-2">
+              <label for="muteAllCheckbox" title="Mute all tracks at once, then unmute any single track to isolate it" class="inline-flex items-center gap-1.5 cursor-pointer text-[11px] font-medium text-white hover:text-claude-accent transition">
+                <input type="checkbox" id="muteAllCheckbox" class="w-3.5 h-3.5 rounded accent-[#d97757] bg-claude-bg border-claude-border cursor-pointer" />
+                <span>Mute All</span>
+              </label>
+              <button id="btnClearSelection" class="text-[11px] text-claude-accent hover:underline hidden">Clear</button>
+            </div>
+          </div>
+          <div class="flex-1 relative h-8 overflow-hidden cursor-pointer" id="timelineRulerContainer" title="Click anywhere on ruler to seek playhead">
+            <canvas id="rulerCanvas" class="w-full h-full block"></canvas>
+          </div>
+        </div>
+
+        <!-- Track List Container -->
+        <div id="tracksContainer" class="divide-y divide-claude-border max-h-[72vh] overflow-y-auto flex flex-col">
+          <!-- Tracks injected dynamically here -->
+        </div>
+
+        <!-- Empty State Onboarding Card -->
+        <div id="emptyState" class="p-10 text-center flex flex-col items-center justify-center gap-4">
+          <div class="w-12 h-12 rounded-2xl bg-claude-accentSoft border border-claude-accent/30 flex items-center justify-center text-claude-accent">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle>
+            </svg>
+          </div>
+          <div class="max-w-md space-y-1.5">
+            <h2 class="text-base font-semibold text-white">Your workspace is ready</h2>
+            <p class="text-xs text-white leading-relaxed">
+              Import an audio recording (WAV, MP3, OGG) to trim, normalize, and polish with studio effects, or upload a <code class="text-claude-accent font-mono">.mid</code> file and assign expressive, realistic instruments to each part.
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center justify-center gap-2.5 pt-1">
+            <button onclick="document.getElementById('btnLoadDemo').click()" class="px-4 py-2 rounded-xl bg-claude-accent hover:bg-claude-accentHover text-[#141416] text-xs font-semibold transition">
+              Load Multi-Instrument Demo Session
+            </button>
+            <button onclick="document.getElementById('btnAddAudio').click()" class="px-4 py-2 rounded-xl bg-claude-elevated hover:bg-[#323238] border border-claude-border text-xs font-medium text-white transition">
+              Import Audio File
+            </button>
+            <button onclick="document.getElementById('btnAddMidi').click()" class="px-4 py-2 rounded-xl bg-claude-elevated hover:bg-[#323238] border border-claude-border text-xs font-medium text-white transition">
+              Upload MIDI (.mid)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Keyboard & Interaction Guide Footer -->
+      <div class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-xl bg-claude-surface/60 border border-claude-border text-[11px] text-white">
+        <div class="flex flex-wrap items-center gap-4">
+          <span><kbd class="px-1.5 py-0.5 rounded bg-claude-elevated border border-claude-border font-mono text-[10px] text-white">Space</kbd> Play / Pause</span>
+          <span><kbd class="px-1.5 py-0.5 rounded bg-claude-elevated border border-claude-border font-mono text-[10px] text-white">Click</kbd> Move Playhead</span>
+          <span><kbd class="px-1.5 py-0.5 rounded bg-claude-elevated border border-claude-border font-mono text-[10px] text-white">Drag</kbd> Select Audio Range</span>
+          <span><kbd class="px-1.5 py-0.5 rounded bg-claude-elevated border border-claude-border font-mono text-[10px] text-white">Del</kbd> Cut Selection</span>
+        </div>
+        <span class="text-white">All DSP & synthesis runs locally in 32-bit float Web Audio</span>
+      </div>
+    </div>
+
+    <!-- Right 4/3 Columns: Context-Aware Track Inspector (Instrument Assigner or DSP Effects Rack) -->
+    <aside class="lg:col-span-4 xl:col-span-3 flex flex-col gap-3">
+      <div id="inspectorPanel" class="glass-panel rounded-xl p-4 flex flex-col gap-4 sticky top-16">
+        
+        <!-- Inspector Header -->
+        <div class="flex items-start justify-between border-b border-claude-border pb-3">
+          <div>
+            <span id="inspectorBadge" class="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-claude-elevated text-white border border-claude-border">No Track Selected</span>
+            <h2 id="inspectorTitle" class="text-sm font-semibold text-white mt-1.5">Track Inspector</h2>
+            <p id="inspectorSubtitle" class="text-xs text-white mt-0.5">Select any track on the left to customize its sound or effects.</p>
+          </div>
+        </div>
+
+        <!-- Empty Inspector Placeholder -->
+        <div id="inspectorEmpty" class="py-8 text-center text-xs text-white space-y-2">
+          <p>Click a track header or waveform to inspect.</p>
+          <p class="text-[11px]">MIDI tracks reveal realistic instrument models; Audio tracks reveal EQ, Noise Gate, Compressor & Reverb.</p>
+        </div>
+
+        <!-- MIDI Instrument Assigner Panel (Shown when a MIDI track is selected) -->
+        <div id="midiInspector" class="hidden flex-col gap-4">
+          <div class="space-y-1.5">
+            <label class="text-xs font-medium text-white flex items-center justify-between">
+              <span>Assigned Instrument</span>
+              <span id="midiChannelLabel" class="text-[11px] font-mono text-claude-accent">Ch 1</span>
+            </label>
+            <select id="midiInstrumentSelect" class="w-full bg-claude-bg border border-claude-border focus:border-claude-accent rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none">
+              <option value="acoustic_piano">🎹 Acoustic Grand Piano (Hammer & String Resonance)</option>
+              <option value="electric_guitar_clean">🎸 Electric Guitar — Clean Jazz Amp (Karplus-Strong)</option>
+              <option value="electric_guitar_crunch">⚡ Electric Guitar — Warm Tube Crunch (Cabinet Sim)</option>
+              <option value="solo_violin">🎻 Solo Violin — Expressive Bowed Strings (Vibrato)</option>
+              <option value="orchestral_cello">🎻 Orchestral Cello — Deep Wooden Body</option>
+              <option value="acoustic_guitar">🪕 Acoustic Fingerpicked Guitar (Body Resonance)</option>
+              <option value="electric_bass">🎸 Warm Electric Bass (Round-Wound & Sub Cab)</option>
+              <option value="pipe_organ">⛪ Church / Pipe Organ (16' 8' 4' 2' Stops)</option>
+              <option value="acoustic_drums">🥁 Acoustic Studio Drum Kit (GM Mapped)</option>
+            </select>
+            <p id="instrumentDescription" class="text-[11px] text-white leading-relaxed pt-1">
+              Multi-harmonic hammer strike with velocity-sensitive brightness and sympathetic string decay.
+            </p>
+          </div>
+
+          <!-- Expressive Articulation Controls -->
+          <div class="p-3 rounded-xl bg-claude-bg border border-claude-border space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-medium text-white">Expressive Realism</span>
+              <button id="btnAuditionNote" class="px-2.5 py-1 rounded-lg bg-claude-accentSoft hover:bg-claude-accent/25 text-claude-accent text-[11px] font-medium transition">
+                ♪ Test Sound
+              </button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2.5">
+              <div class="space-y-1">
+                <div class="flex justify-between text-[11px]">
+                  <span class="text-white">Track Volume</span>
+                  <span id="midiVolVal" class="font-mono text-white">85%</span>
+                </div>
+                <input id="midiVolSlider" type="range" min="0" max="1.25" step="0.01" value="0.85" class="w-full" />
+              </div>
+
+              <div class="space-y-1">
+                <div class="flex justify-between text-[11px]">
+                  <span class="text-white">Stereo Pan</span>
+                  <span id="midiPanVal" class="font-mono text-white">C</span>
+                </div>
+                <input id="midiPanSlider" type="range" min="-1" max="1" step="0.05" value="0" class="w-full accent-sage" />
+              </div>
+            </div>
+
+            <div class="space-y-1">
+              <div class="flex justify-between text-[11px]">
+                <span class="text-white">Room Ambience / Reverb</span>
+                <span id="midiReverbVal" class="font-mono text-white">28%</span>
+              </div>
+              <input id="midiReverbSlider" type="range" min="0" max="1.0" step="0.01" value="0.28" class="w-full" />
+            </div>
+
+            <div class="space-y-1">
+              <div class="flex justify-between text-[11px]">
+                <span class="text-white">Tone Warmth / Brightness</span>
+                <span id="midiToneVal" class="font-mono text-white">65%</span>
+              </div>
+              <input id="midiToneSlider" type="range" min="0" max="1.0" step="0.01" value="0.65" class="w-full" />
+            </div>
+
+            <div class="space-y-1">
+              <div class="flex justify-between text-[11px]">
+                <span class="text-white">Humanize Velocity & Timing</span>
+                <span id="midiHumanizeVal" class="font-mono text-white">35%</span>
+              </div>
+              <input id="midiHumanizeSlider" type="range" min="0" max="1" step="0.05" value="0.35" class="w-full accent-sage" />
+            </div>
+          </div>
+
+          <!-- MIDI Note Summary -->
+          <div class="flex items-center justify-between text-[11px] text-white bg-claude-bg/70 px-3 py-2 rounded-lg border border-claude-border">
+            <span>Note Events: <strong id="midiNoteCount" class="text-white font-mono">0</strong></span>
+            <span>Range: <strong id="midiNoteRange" class="text-white font-mono">—</strong></span>
+          </div>
+        </div>
+
+        <!-- Audio DSP Effects Rack (Shown when an Audio track is selected) -->
+        <div id="audioInspector" class="hidden flex-col gap-3.5 max-h-[65vh] overflow-y-auto pr-0.5">
+          
+          <!-- 1. 3-Band EQ -->
+          <div class="p-3 rounded-xl bg-claude-bg border border-claude-border space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-white">3-Band Studio EQ</span>
+              <button id="btnResetEq" class="text-[11px] text-white hover:text-claude-accent">Flat</button>
+            </div>
+            <div class="grid grid-cols-3 gap-2 pt-1">
+              <div class="flex flex-col items-center gap-1">
+                <span class="text-[10px] text-white">Low 100Hz</span>
+                <input id="eqLow" type="range" min="-15" max="15" step="0.5" value="0" class="w-full" />
+                <span id="eqLowVal" class="text-[10px] font-mono text-white">0.0 dB</span>
+              </div>
+              <div class="flex flex-col items-center gap-1">
+                <span class="text-[10px] text-white">Mid 1kHz</span>
+                <input id="eqMid" type="range" min="-15" max="15" step="0.5" value="0" class="w-full" />
+                <span id="eqMidVal" class="text-[10px] font-mono text-white">0.0 dB</span>
+              </div>
+              <div class="flex flex-col items-center gap-1">
+                <span class="text-[10px] text-white">High 8kHz</span>
+                <input id="eqHigh" type="range" min="-15" max="15" step="0.5" value="0" class="w-full" />
+                <span id="eqHighVal" class="text-[10px] font-mono text-white">0.0 dB</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Noise Gate / Hiss Cleaner -->
+          <div class="p-3 rounded-xl bg-claude-bg border border-claude-border space-y-2">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-xs font-semibold text-white">Noise Gate / De-Hiss</span>
+                <p class="text-[10px] text-white">Silences quiet background noise between phrases</p>
+              </div>
+              <label class="inline-flex items-center cursor-pointer">
+                <input id="gateEnabled" type="checkbox" class="sr-only peer">
+                <div class="w-8 h-4 bg-claude-elevated rounded-full peer peer-checked:bg-claude-accent relative after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:after:translate-x-4"></div>
+              </label>
+            </div>
+            <div class="space-y-1">
+              <div class="flex justify-between text-[11px]">
+                <span class="text-white">Noise Threshold</span>
+                <span id="gateThreshVal" class="font-mono text-white">-48 dB</span>
+              </div>
+              <input id="gateThreshold" type="range" min="-75" max="-15" step="1" value="-48" class="w-full" />
+            </div>
+            <button id="btnApplyGateToBuffer" title="Permanently clean background noise on the selected waveform" class="w-full py-1.5 rounded-lg bg-claude-surface hover:bg-claude-elevated border border-claude-border text-[11px] font-medium text-white transition">
+              Apply Noise Reduction to Waveform
+            </button>
+          </div>
+
+          <!-- 3. Dynamics Compressor -->
+          <div class="p-3 rounded-xl bg-claude-bg border border-claude-border space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-white">Dynamics Compressor</span>
+              <select id="compPreset" class="bg-claude-surface border border-claude-border rounded-lg px-2 py-0.5 text-[11px] text-white focus:outline-none">
+                <option value="custom">Custom</option>
+                <option value="vocal">Vocal Polish</option>
+                <option value="drums">Punchy Drums</option>
+                <option value="glue">Gentle Glue</option>
+              </select>
+            </div>
+            <div class="grid grid-cols-2 gap-2.5">
+              <div class="space-y-1">
+                <div class="flex justify-between text-[10px]">
+                  <span class="text-white">Threshold</span>
+                  <span id="compThreshVal" class="font-mono text-white">-18 dB</span>
+                </div>
+                <input id="compThreshold" type="range" min="-50" max="0" step="1" value="-18" class="w-full" />
+              </div>
+              <div class="space-y-1">
+                <div class="flex justify-between text-[10px]">
+                  <span class="text-white">Ratio</span>
+                  <span id="compRatioVal" class="font-mono text-white">3.0:1</span>
+                </div>
+                <input id="compRatio" type="range" min="1" max="12" step="0.5" value="3" class="w-full" />
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Convolution Reverb -->
+          <div class="p-3 rounded-xl bg-claude-bg border border-claude-border space-y-2.5">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-white">Space & Reverb</span>
+              <select id="reverbType" class="bg-claude-surface border border-claude-border rounded-lg px-2 py-0.5 text-[11px] text-white focus:outline-none">
+                <option value="room">Warm Studio Room</option>
+                <option value="hall">Concert Hall</option>
+                <option value="plate">Vintage Plate</option>
+              </select>
+            </div>
+            <div class="space-y-1">
+              <div class="flex justify-between text-[11px]">
+                <span class="text-white">Reverb Mix (Dry / Wet)</span>
+                <span id="reverbMixVal" class="font-mono text-white">15%</span>
+              </div>
+              <input id="reverbMix" type="range" min="0" max="0.8" step="0.01" value="0.15" class="w-full" />
+            </div>
+          </div>
+
+          <button id="btnBakeEffects" title="Render current EQ, Compressor & Reverb permanently into the audio waveform" class="w-full py-2 rounded-xl bg-claude-accentSoft hover:bg-claude-accent/25 border border-claude-accent/40 text-xs font-medium text-claude-accent transition">
+            Bake Effects into Waveform
+          </button>
+        </div>
+
+      </div>
+    </aside>
+  </main>
+
+  <!-- Toast Notification Banner (Replaces alert) -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script>
+    /**
+     * SONATA STUDIO — Standalone Clean DAW & Audio Editor
+     * Architecture:
+     * 1. State & Track Model (Audio tracks with AudioBuffer + Undo stack + DSP params; MIDI tracks with parsed events + instrument model)
+     * 2. Binary Standard MIDI File (SMF Format 0 & 1) Parser
+     * 3. Realistic Physical-Modeling & Multi-Harmonic Web Audio Instrument Engine
+     * 4. Audacity-Style Buffer DSP Operations (Trim, Cut, Silence, Fade In/Out, Normalize, Noise Gate)
+     * 5. Interactive High-DPI Waveform & Piano-Roll Timeline Renderer
+     * 6. Real-Time Playback Scheduler & OfflineAudioContext WAV Exporter
+     */
+
+    // =========================================================================
+    // 1. GLOBAL APPLICATION STATE
+    // =========================================================================
+    const state = {
+      tracks: [],
+      selectedTrackId: null,
+      undoStack: [],        // Global session/edit undo history
+      redoStack: [],        // Global session/edit redo history
+      isPlaying: false,
+      isLooping: false,
+      bpm: 108,
+      currentTime: 0,       // Playhead position in seconds
+      selectionStart: null, // Selection start in seconds (null if none)
+      selectionEnd: null,   // Selection end in seconds
+      zoom: 1.0,            // Pixels per second multiplier (base = 70 px/s)
+      masterVolume: 0.9,
+      audioCtx: null,
+      masterGain: null,
+      masterAnalyser: null,
+      reverbBuffers: {},    // Synthesized impulse responses
+      activeNodes: [],      // Currently playing audio/midi nodes for instant stop
+      schedulerTimer: null,
+      playStartWallTime: 0,
+      playStartSongTime: 0,
+      midiScheduledUntil: 0,
+      isDraggingSelection: false,
+      dragAnchorTime: 0,
+    };
+
+    const BASE_PX_PER_SEC = 75;
+
+    const INSTRUMENT_META = {
+      acoustic_piano: {
+        name: 'Acoustic Grand Piano',
+        desc: 'Multi-harmonic hammer strike with velocity-mapped lowpass brightness and warm wooden soundboard decay.'
+      },
+      electric_guitar_clean: {
+        name: 'Electric Guitar (Clean Jazz)',
+        desc: 'Karplus-Strong plucked string physical modeling routed through a warm vintage jazz combo cabinet filter.'
+      },
+      electric_guitar_crunch: {
+        name: 'Electric Guitar (Warm Crunch)',
+        desc: 'Karplus-Strong string waveguide with asymmetric tube saturation and 4x12 speaker cabinet resonance.'
+      },
+      solo_violin: {
+        name: 'Solo Violin (Expressive)',
+        desc: 'Bowed string harmonic synthesis with vocal-body formants, natural bow attack, and delayed vibrato LFO.'
+      },
+      orchestral_cello: {
+        name: 'Orchestral Cello',
+        desc: 'Deep spruce/maple chest resonance formants with expressive slow vibrato and rich lower harmonics.'
+      },
+      acoustic_guitar: {
+        name: 'Acoustic Fingerpicked Guitar',
+        desc: 'Nylon/steel string physical pluck with hollow dreadnought body resonance at 110Hz & 220Hz.'
+      },
+      electric_bass: {
+        name: 'Warm Electric Bass',
+        desc: 'Round-wound fundamental with subtle fret-pluck transient and deep 15-inch bass cabinet warmth.'
+      },
+      pipe_organ: {
+        name: 'Church / Pipe Organ',
+        desc: 'Additive drawbar pipe ranks (16\', 8\', 4\', 2\') with gentle acoustic air chiff and cathedral sustain.'
+      },
+      acoustic_drums: {
+        name: 'Acoustic Studio Drum Kit',
+        desc: 'Velocity-sensitive punchy kick, crisp snare wire burst, metallic hi-hats, toms, and cymbals.'
+      }
+    };
+
+    // =========================================================================
+    // 2. AUDIO CONTEXT & SYNTHESIZED IMPULSE RESPONSES (REVERB)
+    // =========================================================================
+    function ensureAudioContext() {
+      if (!state.audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        state.audioCtx = new AudioContextClass();
+
+        state.masterGain = state.audioCtx.createGain();
+        state.masterGain.gain.value = state.masterVolume;
+
+        // Subtle master limiter to prevent harsh digital clipping
+        const masterLimiter = state.audioCtx.createDynamicsCompressor();
+        masterLimiter.threshold.value = -2.0;
+        masterLimiter.knee.value = 6.0;
+        masterLimiter.ratio.value = 12.0;
+        masterLimiter.attack.value = 0.003;
+        masterLimiter.release.value = 0.15;
+
+        state.masterAnalyser = state.audioCtx.createAnalyser();
+        state.masterAnalyser.fftSize = 256;
+
+        state.masterGain.connect(masterLimiter);
+        masterLimiter.connect(state.masterAnalyser);
+        state.masterAnalyser.connect(state.audioCtx.destination);
+
+        buildReverbImpulses(state.audioCtx);
+      }
+      if (state.audioCtx.state === 'suspended') {
+        state.audioCtx.resume();
+      }
+      return state.audioCtx;
+    }
+
+    function buildReverbImpulses(ctx) {
+      const configs = {
+        room: { duration: 1.1, decay: 2.8, damping: 4500 },
+        hall: { duration: 2.6, decay: 2.1, damping: 3200 },
+        plate: { duration: 1.8, decay: 2.4, damping: 6500 }
+      };
+
+      for (const [key, cfg] of Object.entries(configs)) {
+        const length = Math.floor(ctx.sampleRate * cfg.duration);
+        const impulse = ctx.createBuffer(2, length, ctx.sampleRate);
+        for (let ch = 0; ch < 2; ch++) {
+          const data = impulse.getChannelData(ch);
+          let lastSample = 0;
+          const alpha = Math.min(1, (2 * Math.PI * cfg.damping) / ctx.sampleRate);
+          for (let i = 0; i < length; i++) {
+            const t = i / ctx.sampleRate;
+            const env = Math.pow(1 - i / length, cfg.decay);
+            // Early reflections + diffuse tail
+            const white = (Math.random() * 2 - 1) * env;
+            lastSample = lastSample + alpha * (white - lastSample);
+            data[i] = lastSample * 0.6;
+          }
+        }
+        state.reverbBuffers[key] = impulse;
+      }
+    }
+
+    // =========================================================================
+    // 3. TOAST NOTIFICATIONS & UTILITIES
+    // =========================================================================
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const el = document.createElement('div');
+      const accentClass = type === 'success'
+        ? 'border-claude-sage/50 text-white'
+        : type === 'warn'
+        ? 'border-claude-amber/50 text-white'
+        : 'border-claude-accent/50 text-white';
+
+      el.className = `pointer-events-auto bg-claude-surface/95 backdrop-blur border ${accentClass} px-3.5 py-2.5 rounded-xl shadow-xl text-xs font-medium flex items-center gap-2 transition-all duration-200`;
+      const dotColor = type === 'success' ? 'bg-claude-sage' : type === 'warn' ? 'bg-claude-amber' : 'bg-claude-accent';
+      el.innerHTML = `<span class="w-2 h-2 rounded-full ${dotColor}"></span><span>${message}</span>`;
+      container.appendChild(el);
+      setTimeout(() => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(6px)';
+        setTimeout(() => el.remove(), 220);
+      }, 3200);
+    }
+
+    function formatTimecode(seconds) {
+      const s = Math.max(0, seconds);
+      const mins = Math.floor(s / 60);
+      const secs = Math.floor(s % 60);
+      const ms = Math.floor((s % 1) * 100);
+      return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${String(ms).padStart(2, '0')}`;
+    }
+
+    function formatBarsBeats(seconds, bpm) {
+      const beatsPerSec = bpm / 60;
+      const totalBeats = Math.max(0, seconds * beatsPerSec);
+      const bar = Math.floor(totalBeats / 4) + 1;
+      const beat = Math.floor(totalBeats % 4) + 1;
+      return `${String(bar).padStart(3, '0')}:${beat}`;
+    }
+
+    function midiNoteToName(note) {
+      const names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+      const oct = Math.floor(note / 12) - 1;
+      return `${names[note % 12]}${oct}`;
+    }
+
+    function midiNoteToFreq(note) {
+      return 440 * Math.pow(2, (note - 69) / 12);
+    }
+
+    function getSongDuration() {
+      let maxDur = 8; // minimum 8s canvas
+      for (const t of state.tracks) {
+        if (t.type === 'audio' && t.buffer) {
+          maxDur = Math.max(maxDur, t.buffer.duration);
+        } else if (t.type === 'midi' && t.notes.length > 0) {
+          for (const n of t.notes) {
+            maxDur = Math.max(maxDur, n.start + n.duration + 0.5);
+          }
+        }
+      }
+      return maxDur;
+    }
+
+    function getSelectedTrack() {
+      return state.tracks.find(t => t.id === state.selectedTrackId) || null;
+    }
+
+    // =========================================================================
+    // 4. STANDARD MIDI FILE (SMF FORMAT 0 & 1) BINARY PARSER
+    // =========================================================================
+    function mapGmProgramToInstrument(program, channel) {
+      if (channel === 9) return 'acoustic_drums';
+      if (program >= 0 && program <= 7) return 'acoustic_piano';
+      if (program >= 16 && program <= 23) return 'pipe_organ';
+      if (program >= 24 && program <= 25) return 'acoustic_guitar';
+      if (program >= 26 && program <= 28) return 'electric_guitar_clean';
+      if (program >= 29 && program <= 31) return 'electric_guitar_crunch';
+      if (program >= 32 && program <= 39) return 'electric_bass';
+      if (program >= 40 && program <= 41) return 'solo_violin';
+      if (program >= 42 && program <= 43) return 'orchestral_cello';
+      if (program >= 48 && program <= 51) return 'solo_violin';
+      return 'acoustic_piano';
+    }
+
+    function parseStandardMidiFile(arrayBuffer) {
+      const view = new DataView(arrayBuffer);
+      let offset = 0;
+
+      function readStr(len) {
+        let s = '';
+        for (let i = 0; i < len && offset + i < view.byteLength; i++) {
+          s += String.fromCharCode(view.getUint8(offset + i));
+        }
+        offset += len;
+        return s;
+      }
+
+      function readUint32() {
+        const v = view.getUint32(offset, false);
+        offset += 4;
+        return v;
+      }
+
+      function readUint16() {
+        const v = view.getUint16(offset, false);
+        offset += 2;
+        return v;
+      }
+
+      function readVarLen(endBound) {
+        let value = 0;
+        let byte = 0;
+        let safety = 0;
+        do {
+          if (offset >= endBound) return value;
+          byte = view.getUint8(offset++);
+          value = (value << 7) | (byte & 0x7f);
+          safety++;
+        } while ((byte & 0x80) !== 0 && safety < 5);
+        return value;
+      }
+
+      if (view.byteLength < 14 || readStr(4) !== 'MThd') {
+        throw new Error('Invalid MIDI header (missing MThd signature).');
+      }
+
+      const headerLen = readUint32();
+      const format = readUint16();
+      const numTracks = readUint16();
+      const division = readUint16();
+      if (headerLen > 6) {
+        offset += (headerLen - 6);
+      }
+
+      const ticksPerQuarter = (division & 0x8000) === 0 ? (division || 480) : 480;
+      const tempoEvents = [{ tick: 0, usPerQuarter: 500000 }]; // Default 120 BPM
+      const rawParsedTracks = [];
+
+      for (let t = 0; t < numTracks; t++) {
+        if (offset + 8 > view.byteLength) break;
+        const chunkType = readStr(4);
+        const chunkLen = readUint32();
+        const chunkEnd = Math.min(view.byteLength, offset + chunkLen);
+
+        if (chunkType !== 'MTrk') {
+          offset = chunkEnd;
+          continue;
+        }
+
+        let tick = 0;
+        let runningStatus = 0;
+        let trackName = '';
+        const channelPrograms = {};
+        const activeNotes = new Map(); // key: `${ch}_${note}` -> array of { startTick, velocity }
+        const completedNotes = [];
+
+        while (offset < chunkEnd) {
+          const delta = readVarLen(chunkEnd);
+          tick += delta;
+          if (offset >= chunkEnd) break;
+
+          let statusByte = view.getUint8(offset);
+          if (statusByte < 0x80) {
+            statusByte = runningStatus;
+          } else {
+            offset++;
+            if (statusByte < 0xf0) {
+              runningStatus = statusByte;
+            }
+          }
+
+          if (statusByte === 0xff) {
+            // Meta event
+            if (offset >= chunkEnd) break;
+            const metaType = view.getUint8(offset++);
+            const metaLen = readVarLen(chunkEnd);
+            const metaEnd = Math.min(chunkEnd, offset + metaLen);
+
+            if (metaType === 0x51 && metaLen >= 3 && offset + 3 <= chunkEnd) {
+              const usPerQuarter =
+                (view.getUint8(offset) << 16) |
+                (view.getUint8(offset + 1) << 8) |
+                view.getUint8(offset + 2);
+              if (usPerQuarter > 0) {
+                tempoEvents.push({ tick, usPerQuarter });
+              }
+            } else if (metaType === 0x03 && metaLen > 0) {
+              let nameStr = '';
+              for (let i = 0; i < metaLen && offset + i < chunkEnd; i++) {
+                const c = view.getUint8(offset + i);
+                if (c >= 32 && c <= 126) nameStr += String.fromCharCode(c);
+              }
+              if (nameStr.trim()) trackName = nameStr.trim();
+            } else if (metaType === 0x2f) {
+              offset = chunkEnd;
+              break;
+            }
+            offset = metaEnd;
+          } else if (statusByte === 0xf0 || statusByte === 0xf7) {
+            // SysEx event
+            const sysLen = readVarLen(chunkEnd);
+            offset = Math.min(chunkEnd, offset + sysLen);
+          } else {
+            const eventType = statusByte & 0xf0;
+            const ch = statusByte & 0x0f;
+
+            if (eventType === 0xc0 || eventType === 0xd0) {
+              if (offset >= chunkEnd) break;
+              const param1 = view.getUint8(offset++);
+              if (eventType === 0xc0) {
+                channelPrograms[ch] = param1;
+              }
+            } else {
+              if (offset + 1 >= chunkEnd) break;
+              const param1 = view.getUint8(offset++);
+              const param2 = view.getUint8(offset++);
+
+              if (eventType === 0x90 && param2 > 0) {
+                const key = `${ch}_${param1}`;
+                if (!activeNotes.has(key)) activeNotes.set(key, []);
+                activeNotes.get(key).push({ startTick: tick, velocity: param2 });
+              } else if (eventType === 0x80 || (eventType === 0x90 && param2 === 0)) {
+                const key = `${ch}_${param1}`;
+                const stack = activeNotes.get(key);
+                if (stack && stack.length > 0) {
+                  const noteOn = stack.shift();
+                  completedNotes.push({
+                    channel: ch,
+                    note: param1,
+                    velocity: noteOn.velocity,
+                    startTick: noteOn.startTick,
+                    endTick: Math.max(noteOn.startTick + 1, tick)
+                  });
+                }
+              }
+            }
+          }
+        }
+
+        // Flush any unclosed notes at track end
+        for (const [key, stack] of activeNotes.entries()) {
+          const [chStr, noteStr] = key.split('_');
+          const ch = parseInt(chStr, 10);
+          const note = parseInt(noteStr, 10);
+          for (const noteOn of stack) {
+            completedNotes.push({
+              channel: ch,
+              note,
+              velocity: noteOn.velocity,
+              startTick: noteOn.startTick,
+              endTick: Math.max(noteOn.startTick + ticksPerQuarter / 2, tick)
+            });
+          }
+        }
+
+        if (completedNotes.length > 0) {
+          rawParsedTracks.push({
+            index: t,
+            name: trackName,
+            channelPrograms,
+            notes: completedNotes
+          });
+        }
+
+        offset = chunkEnd;
+      }
+
+      // Sort and deduplicate tempo map
+      tempoEvents.sort((a, b) => a.tick - b.tick);
+      const cleanTempoMap = [];
+      for (const te of tempoEvents) {
+        if (cleanTempoMap.length > 0 && cleanTempoMap[cleanTempoMap.length - 1].tick === te.tick) {
+          cleanTempoMap[cleanTempoMap.length - 1].usPerQuarter = te.usPerQuarter;
+        } else {
+          cleanTempoMap.push(te);
+        }
+      }
+
+      function ticksToSeconds(targetTick) {
+        let secs = 0;
+        let lastTick = 0;
+        let currentUsPerQuarter = cleanTempoMap[0]?.usPerQuarter || 500000;
+
+        for (let i = 1; i < cleanTempoMap.length; i++) {
+          const ev = cleanTempoMap[i];
+          if (ev.tick >= targetTick) break;
+          secs += ((ev.tick - lastTick) / ticksPerQuarter) * (currentUsPerQuarter / 1e6);
+          lastTick = ev.tick;
+          currentUsPerQuarter = ev.usPerQuarter;
+        }
+        secs += ((targetTick - lastTick) / ticksPerQuarter) * (currentUsPerQuarter / 1e6);
+        return secs;
+      }
+
+      const initialUs = cleanTempoMap[0]?.usPerQuarter || 500000;
+      const bpm = Math.max(40, Math.min(240, Math.round(60000000 / initialUs)));
+
+      // Split multi-channel tracks (especially Format 0) so each instrument part gets its own DAW track
+      const finalTracks = [];
+      rawParsedTracks.forEach((rt, idx) => {
+        const byChannel = new Map();
+        for (const n of rt.notes) {
+          if (!byChannel.has(n.channel)) byChannel.set(n.channel, []);
+          byChannel.get(n.channel).push(n);
+        }
+
+        const multiChannel = byChannel.size > 1;
+        for (const [ch, chNotes] of byChannel.entries()) {
+          chNotes.sort((a, b) => a.startTick - b.startTick);
+          const timedNotes = chNotes.map(n => {
+            const start = ticksToSeconds(n.startTick);
+            const end = ticksToSeconds(n.endTick);
+            return {
+              note: n.note,
+              velocity: n.velocity,
+              start,
+              duration: Math.max(0.06, end - start)
+            };
+          });
+
+          const prog = rt.channelPrograms[ch] ?? 0;
+          const suggestedInstrument = mapGmProgramToInstrument(prog, ch);
+          const instLabel = INSTRUMENT_META[suggestedInstrument]?.name.split(' (')[0] || `Channel ${ch + 1}`;
+          const partName = rt.name
+            ? (multiChannel ? `${rt.name} (Ch ${ch + 1})` : rt.name)
+            : (ch === 9 ? 'Drum Kit (Ch 10)' : `${instLabel} (Ch ${ch + 1})`);
+
+          finalTracks.push({
+            name: partName,
+            channel: ch,
+            notes: timedNotes,
+            suggestedInstrument
+          });
+        }
+      });
+
+      return { format, bpm, tracks: finalTracks };
+    }
+
+    // =========================================================================
+    // 5. REALISTIC PHYSICAL-MODELING & MULTI-HARMONIC INSTRUMENT ENGINE
+    // =========================================================================
+    function trackActiveNode(node) {
+      if (state.isPlaying && node && typeof node.stop === 'function') {
+        state.activeNodes.push(node);
+      }
+    }
+
+    function computeToneFilterFrequency(tone) {
+      // Exponential sweep from 300 Hz (0% muffled warmth) to 12,000 Hz (100% crisp brilliance)
+      const clamped = Math.max(0, Math.min(1, tone ?? 0.65));
+      return 300 * Math.pow(40, clamped);
+    }
+
+    function computePresenceShelfGain(tone) {
+      const clamped = Math.max(0, Math.min(1, tone ?? 0.65));
+      return clamped > 0.5 ? (clamped - 0.5) * 14 : (clamped - 0.5) * 8;
+    }
+
+    /**
+     * Persistent Live Per-Track Web Audio Bus:
+     * busInput -> toneFilter (300Hz..12kHz) -> presenceShelf -> trackGain -> trackPanner -> masterGain
+     *                                      \-> reverbSendGain -> shared ConvolverNode -> masterGain
+     */
+    function getOrCreateTrackBus(ctx, track, destinationNode = null) {
+      const targetDest = destinationNode || state.masterGain;
+      if (ctx === state.audioCtx && track._liveNodes && track._liveNodes.busInput) {
+        syncTrackAudioParams(track);
+        return track._liveNodes.busInput;
+      }
+
+      const busInput = ctx.createGain();
+      busInput.gain.value = 1.0;
+
+      const tone = track.midiParams?.tone ?? 0.65;
+      const toneFilter = ctx.createBiquadFilter();
+      toneFilter.type = 'lowpass';
+      toneFilter.frequency.value = computeToneFilterFrequency(tone);
+      toneFilter.Q.value = 0.85;
+
+      const presenceShelf = ctx.createBiquadFilter();
+      presenceShelf.type = 'highshelf';
+      presenceShelf.frequency.value = 3200;
+      presenceShelf.gain.value = computePresenceShelfGain(tone);
+
+      const trackGain = ctx.createGain();
+      trackGain.gain.value = isTrackAudible(track) ? track.volume : 0;
+
+      const panner = ctx.createStereoPanner();
+      panner.pan.value = track.pan || 0;
+
+      const revAmt = track.midiParams?.reverb ?? 0.28;
+      const dryGain = ctx.createGain();
+      dryGain.gain.value = 1 - revAmt * 0.28;
+
+      const reverbSendGain = ctx.createGain();
+      reverbSendGain.gain.value = revAmt * 0.95;
+
+      const conv = ctx.createConvolver();
+      if (ctx === state.audioCtx && state.reverbBuffers.hall) {
+        conv.buffer = state.reverbBuffers.hall;
+      } else {
+        conv.buffer = createSingleImpulseBuffer(ctx, 'hall');
+      }
+
+      busInput.connect(toneFilter);
+      toneFilter.connect(presenceShelf);
+
+      // Dry path
+      presenceShelf.connect(dryGain);
+      dryGain.connect(trackGain);
+
+      // Parallel wet reverb send (still respects track volume & stereo pan)
+      presenceShelf.connect(reverbSendGain);
+      reverbSendGain.connect(conv);
+      conv.connect(trackGain);
+
+      trackGain.connect(panner);
+      panner.connect(targetDest);
+
+      if (ctx === state.audioCtx) {
+        track._liveNodes = {
+          busInput,
+          toneFilter,
+          presenceShelf,
+          trackGain,
+          panner,
+          dryGain,
+          reverbSendGain
+        };
+      }
+
+      return busInput;
+    }
+
+    function syncTrackAudioParams(track) {
+      if (!track || !track._liveNodes || !state.audioCtx) return;
+      const now = state.audioCtx.currentTime;
+      const nodes = track._liveNodes;
+
+      if (nodes.trackGain) {
+        nodes.trackGain.gain.setTargetAtTime(isTrackAudible(track) ? track.volume : 0, now, 0.015);
+      }
+      if (nodes.panner) {
+        nodes.panner.pan.setTargetAtTime(track.pan || 0, now, 0.015);
+      }
+      if (track.type === 'midi' && track.midiParams) {
+        const tone = track.midiParams.tone ?? 0.65;
+        const rev = track.midiParams.reverb ?? 0.28;
+        if (nodes.toneFilter) {
+          nodes.toneFilter.frequency.setTargetAtTime(computeToneFilterFrequency(tone), now, 0.02);
+        }
+        if (nodes.presenceShelf) {
+          nodes.presenceShelf.gain.setTargetAtTime(computePresenceShelfGain(tone), now, 0.02);
+        }
+        if (nodes.reverbSendGain) {
+          nodes.reverbSendGain.gain.setTargetAtTime(rev * 0.95, now, 0.02);
+        }
+        if (nodes.dryGain) {
+          nodes.dryGain.gain.setTargetAtTime(1 - rev * 0.28, now, 0.02);
+        }
+      }
+    }
+
+    function createSoftClipCurve(drive = 2.5) {
+      const samples = 1024;
+      const curve = new Float32Array(samples);
+      for (let i = 0; i < samples; i++) {
+        const x = (i * 2) / samples - 1;
+        curve[i] = Math.tanh(x * drive) / Math.tanh(drive);
+      }
+      return curve;
+    }
+
+    function triggerRealisticInstrumentNote(ctx, destNode, instrument, noteObj, startTime, params = {}) {
+      const freq = midiNoteToFreq(noteObj.note);
+      const vel = Math.max(0.08, Math.min(1, (noteObj.velocity || 85) / 127));
+      const dur = Math.max(0.08, noteObj.duration || 0.4);
+      const tone = Math.max(0, Math.min(1, params.tone ?? 0.65));
+      const humanize = Math.max(0, Math.min(1, params.humanize ?? 0.35));
+      const t0 = Math.max(ctx.currentTime, startTime);
+
+      if (instrument === 'acoustic_drums') {
+        triggerDrumSound(ctx, destNode, noteObj.note, vel, t0, tone);
+        return;
+      }
+
+      if (instrument === 'electric_guitar_clean' || instrument === 'electric_guitar_crunch' || instrument === 'acoustic_guitar') {
+        triggerKarplusStrongGuitar(ctx, destNode, freq, vel, dur, t0, instrument, tone);
+        return;
+      }
+
+      if (instrument === 'solo_violin' || instrument === 'orchestral_cello') {
+        triggerBowedString(ctx, destNode, freq, vel, dur, t0, instrument, tone, humanize);
+        return;
+      }
+
+      if (instrument === 'electric_bass') {
+        triggerElectricBass(ctx, destNode, freq, vel, dur, t0, tone);
+        return;
+      }
+
+      if (instrument === 'pipe_organ') {
+        triggerPipeOrgan(ctx, destNode, freq, vel, dur, t0, tone);
+        return;
+      }
+
+      // Default: Acoustic Grand Piano (multi-harmonic hammer strike + soundboard filter)
+      triggerAcousticPiano(ctx, destNode, freq, vel, dur, t0, tone);
+    }
+
+    function triggerAcousticPiano(ctx, dest, freq, vel, dur, t0, tone) {
+      const release = Math.min(1.4, 0.45 + (1 - Math.min(1, freq / 1200)) * 0.8);
+      const stopTime = t0 + dur + release;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      const brightCutoff = Math.min(14000, freq * (1.2 + vel * (1.5 + tone * 9.5)) + (180 + tone * 650));
+      filter.frequency.setValueAtTime(brightCutoff, t0);
+      filter.frequency.exponentialRampToValueAtTime(Math.max(160, freq * (0.9 + tone * 0.9)), stopTime);
+      filter.Q.value = 0.8 + tone * 0.7;
+
+      const env = ctx.createGain();
+      const peakGain = vel * 0.30;
+      env.gain.setValueAtTime(0.0001, t0);
+      env.gain.linearRampToValueAtTime(peakGain, t0 + (0.018 - tone * 0.012));
+      env.gain.exponentialRampToValueAtTime(Math.max(0.001, peakGain * 0.35), t0 + dur * 0.65 + 0.12);
+      env.gain.exponentialRampToValueAtTime(0.0001, stopTime);
+
+      filter.connect(env);
+      env.connect(dest);
+
+      // Detuned trichord strings + tone-scaled upper overtones
+      const partials = [
+        { mult: 1, detune: -3, type: 'triangle', gain: 0.58 },
+        { mult: 1, detune: 3, type: 'triangle', gain: 0.58 },
+        { mult: 2, detune: 1, type: 'sine', gain: 0.08 + tone * 0.34 },
+        { mult: 3, detune: -2, type: 'sine', gain: 0.02 + tone * 0.18 }
+      ];
+
+      partials.forEach(p => {
+        const osc = ctx.createOscillator();
+        const pGain = ctx.createGain();
+        osc.type = p.type;
+        osc.frequency.setValueAtTime(freq * p.mult, t0);
+        osc.detune.setValueAtTime(p.detune, t0);
+        pGain.gain.value = p.gain;
+        osc.connect(pGain);
+        pGain.connect(filter);
+        osc.start(t0);
+        osc.stop(stopTime + 0.02);
+        trackActiveNode(osc);
+      });
+    }
+
+    function triggerKarplusStrongGuitar(ctx, dest, freq, vel, dur, t0, variant, tone) {
+      const sr = ctx.sampleRate;
+      const totalDur = dur + 1.1;
+      const totalSamples = Math.ceil(sr * totalDur);
+      const period = Math.max(2, Math.round(sr / freq));
+      const buffer = ctx.createBuffer(1, totalSamples, sr);
+      const out = buffer.getChannelData(0);
+
+      // Excitation pluck burst (filtered noise simulating pick/finger)
+      const ring = new Float32Array(period);
+      let prev = 0;
+      const pickSoftness = (variant === 'acoustic_guitar' ? 0.25 : 0.35) + tone * 0.55;
+      for (let i = 0; i < period; i++) {
+        const white = (Math.random() * 2 - 1) * vel;
+        prev = pickSoftness * white + (1 - pickSoftness) * prev;
+        ring[i] = prev;
+      }
+
+      // Waveguide string loop with frequency-dependent damping
+      const decayFactor = variant === 'electric_guitar_crunch' ? 0.9965 : 0.9945;
+      const brightness = 0.22 + tone * 0.52;
+      let idx = 0;
+      for (let i = 0; i < totalSamples; i++) {
+        const current = ring[idx];
+        const nextIdx = (idx + 1) % period;
+        const next = ring[nextIdx];
+        out[i] = current;
+        const avg = brightness * current + (1 - brightness) * next;
+        ring[idx] = avg * decayFactor;
+        idx = nextIdx;
+      }
+
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0.48, t0);
+      env.gain.setValueAtTime(0.48, t0 + dur);
+      env.gain.exponentialRampToValueAtTime(0.0008, t0 + totalDur);
+
+      if (variant === 'electric_guitar_crunch') {
+        const shaper = ctx.createWaveShaper();
+        shaper.curve = createSoftClipCurve(2.2 + tone * 2.4);
+        shaper.oversample = '2x';
+
+        const cabFilter = ctx.createBiquadFilter();
+        cabFilter.type = 'lowpass';
+        cabFilter.frequency.value = 1400 + tone * 4400;
+        cabFilter.Q.value = 1.4;
+
+        src.connect(shaper);
+        shaper.connect(cabFilter);
+        cabFilter.connect(env);
+      } else if (variant === 'acoustic_guitar') {
+        const bodyRes = ctx.createBiquadFilter();
+        bodyRes.type = 'peaking';
+        bodyRes.frequency.value = 185;
+        bodyRes.Q.value = 2.2;
+        bodyRes.gain.value = 6.5;
+        src.connect(bodyRes);
+        bodyRes.connect(env);
+      } else {
+        const ampFilter = ctx.createBiquadFilter();
+        ampFilter.type = 'lowpass';
+        ampFilter.frequency.value = 950 + tone * 5200;
+        ampFilter.Q.value = 1.1;
+        src.connect(ampFilter);
+        ampFilter.connect(env);
+      }
+
+      env.connect(dest);
+      src.start(t0);
+      src.stop(t0 + totalDur + 0.02);
+      trackActiveNode(src);
+    }
+
+    function triggerBowedString(ctx, dest, freq, vel, dur, t0, variant, tone, humanize = 0.35) {
+      const isCello = variant === 'orchestral_cello';
+      const attack = Math.min(0.22, dur * 0.35);
+      const release = 0.38;
+      const stopTime = t0 + dur + release;
+
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      osc1.type = 'sawtooth';
+      osc2.type = 'sawtooth';
+      osc1.frequency.setValueAtTime(freq, t0);
+      osc2.frequency.setValueAtTime(freq, t0);
+      osc2.detune.setValueAtTime(isCello ? 4 : 6, t0);
+
+      // Delayed expressive vibrato LFO scaled by humanize
+      const vibOsc = ctx.createOscillator();
+      const vibGain = ctx.createGain();
+      vibOsc.frequency.value = (isCello ? 4.6 : 5.4) + (humanize - 0.35) * 1.4;
+      const vibDepth = (isCello ? 5 : 8) * (0.4 + humanize * 1.4);
+      vibGain.gain.setValueAtTime(0, t0);
+      vibGain.gain.linearRampToValueAtTime(0, t0 + Math.min(0.26, dur * 0.38));
+      vibGain.gain.linearRampToValueAtTime(vibDepth, t0 + Math.min(0.55, dur * 0.8));
+      vibOsc.connect(vibGain);
+      vibGain.connect(osc1.detune);
+      vibGain.connect(osc2.detune);
+
+      const bodyLow = ctx.createBiquadFilter();
+      bodyLow.type = 'peaking';
+      bodyLow.frequency.value = isCello ? 210 : 460;
+      bodyLow.Q.value = 2.4;
+      bodyLow.gain.value = 6.0;
+
+      const bodyFormant = ctx.createBiquadFilter();
+      bodyFormant.type = 'peaking';
+      bodyFormant.frequency.value = isCello ? 680 : 1450;
+      bodyFormant.Q.value = 2.0;
+      bodyFormant.gain.value = 3.0 + tone * 4.5;
+
+      const warmthLp = ctx.createBiquadFilter();
+      warmthLp.type = 'lowpass';
+      warmthLp.frequency.value = (isCello ? 750 : 1100) + tone * 5800;
+      warmthLp.Q.value = 0.8;
+
+      const env = ctx.createGain();
+      const peak = vel * 0.24;
+      env.gain.setValueAtTime(0.0001, t0);
+      env.gain.linearRampToValueAtTime(peak, t0 + attack);
+      env.gain.setValueAtTime(peak * 0.92, t0 + Math.max(attack, dur - 0.04));
+      env.gain.exponentialRampToValueAtTime(0.0001, stopTime);
+
+      osc1.connect(bodyLow);
+      osc2.connect(bodyLow);
+      bodyLow.connect(bodyFormant);
+      bodyFormant.connect(warmthLp);
+      warmthLp.connect(env);
+      env.connect(dest);
+
+      osc1.start(t0);
+      osc2.start(t0);
+      vibOsc.start(t0);
+      osc1.stop(stopTime + 0.02);
+      osc2.stop(stopTime + 0.02);
+      vibOsc.stop(stopTime + 0.02);
+      trackActiveNode(osc1);
+      trackActiveNode(osc2);
+      trackActiveNode(vibOsc);
+    }
+
+    function triggerElectricBass(ctx, dest, freq, vel, dur, t0, tone) {
+      const stopTime = t0 + dur + 0.25;
+      const oscSub = ctx.createOscillator();
+      const oscGrowl = ctx.createOscillator();
+      oscSub.type = 'sine';
+      oscGrowl.type = tone > 0.55 ? 'sawtooth' : 'triangle';
+      oscSub.frequency.setValueAtTime(freq, t0);
+      oscGrowl.frequency.setValueAtTime(freq, t0);
+
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.setValueAtTime(240 + vel * (350 + tone * 2200), t0);
+      lp.frequency.exponentialRampToValueAtTime(140 + tone * 180, stopTime);
+      lp.Q.value = 1.2 + tone * 1.4;
+
+      const env = ctx.createGain();
+      const peak = vel * 0.36;
+      env.gain.setValueAtTime(0.0001, t0);
+      env.gain.linearRampToValueAtTime(peak, t0 + 0.01);
+      env.gain.exponentialRampToValueAtTime(peak * 0.65, t0 + 0.14);
+      env.gain.exponentialRampToValueAtTime(0.0001, stopTime);
+
+      oscSub.connect(lp);
+      oscGrowl.connect(lp);
+      lp.connect(env);
+      env.connect(dest);
+
+      oscSub.start(t0);
+      oscGrowl.start(t0);
+      oscSub.stop(stopTime + 0.02);
+      oscGrowl.stop(stopTime + 0.02);
+      trackActiveNode(oscSub);
+      trackActiveNode(oscGrowl);
+    }
+
+    function triggerPipeOrgan(ctx, dest, freq, vel, dur, t0, tone) {
+      const stopTime = t0 + dur + 0.35;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 900 + tone * 7500;
+
+      const env = ctx.createGain();
+      const peak = vel * 0.22;
+      env.gain.setValueAtTime(0.0001, t0);
+      env.gain.linearRampToValueAtTime(peak, t0 + 0.035);
+      env.gain.setValueAtTime(peak, t0 + dur);
+      env.gain.exponentialRampToValueAtTime(0.0001, stopTime);
+
+      lp.connect(env);
+      env.connect(dest);
+
+      const stops = [
+        { mult: 0.5, gain: 0.42 },
+        { mult: 1.0, gain: 0.55 },
+        { mult: 2.0, gain: 0.14 + tone * 0.32 },
+        { mult: 3.0, gain: 0.04 + tone * 0.22 },
+        { mult: 4.0, gain: 0.02 + tone * 0.22 }
+      ];
+      stops.forEach(s => {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq * s.mult, t0);
+        g.gain.value = s.gain;
+        osc.connect(g);
+        g.connect(lp);
+        osc.start(t0);
+        osc.stop(stopTime + 0.02);
+        trackActiveNode(osc);
+      });
+    }
+
+    function triggerDrumSound(ctx, dest, midiNote, vel, t0, tone = 0.65) {
+      if (midiNote === 35 || midiNote === 36) {
+        // Acoustic Kick Drum
+        const osc = ctx.createOscillator();
+        const env = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(125 + tone * 55, t0);
+        osc.frequency.exponentialRampToValueAtTime(46, t0 + 0.09);
+        osc.frequency.exponentialRampToValueAtTime(34, t0 + 0.28);
+
+        env.gain.setValueAtTime(vel * 0.72, t0);
+        env.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.3);
+
+        osc.connect(env);
+        env.connect(dest);
+        osc.start(t0);
+        osc.stop(t0 + 0.32);
+        trackActiveNode(osc);
+      } else if (midiNote === 38 || midiNote === 40) {
+        // Studio Snare Drum (body tone + snare wire noise burst)
+        const bodyOsc = ctx.createOscillator();
+        const bodyEnv = ctx.createGain();
+        bodyOsc.type = 'triangle';
+        bodyOsc.frequency.setValueAtTime(195, t0);
+        bodyOsc.frequency.exponentialRampToValueAtTime(115, t0 + 0.11);
+        bodyEnv.gain.setValueAtTime(vel * 0.38, t0);
+        bodyEnv.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.14);
+        bodyOsc.connect(bodyEnv);
+        bodyEnv.connect(dest);
+        bodyOsc.start(t0);
+        bodyOsc.stop(t0 + 0.16);
+        trackActiveNode(bodyOsc);
+
+        const noiseLen = Math.ceil(ctx.sampleRate * 0.22);
+        const nBuf = ctx.createBuffer(1, noiseLen, ctx.sampleRate);
+        const data = nBuf.getChannelData(0);
+        for (let i = 0; i < noiseLen; i++) data[i] = Math.random() * 2 - 1;
+
+        const nSrc = ctx.createBufferSource();
+        nSrc.buffer = nBuf;
+        const hp = ctx.createBiquadFilter();
+        hp.type = 'highpass';
+        hp.frequency.value = 800 + tone * 900;
+        const nEnv = ctx.createGain();
+        nEnv.gain.setValueAtTime(vel * (0.28 + tone * 0.25), t0);
+        nEnv.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.21);
+
+        nSrc.connect(hp);
+        hp.connect(nEnv);
+        nEnv.connect(dest);
+        nSrc.start(t0);
+        nSrc.stop(t0 + 0.23);
+        trackActiveNode(nSrc);
+      } else {
+        // Hi-Hat / Cymbal / Percussion
+        const isOpen = midiNote === 46 || midiNote === 49 || midiNote === 51;
+        const decay = isOpen ? 0.55 : 0.085;
+        const noiseLen = Math.ceil(ctx.sampleRate * (decay + 0.05));
+        const nBuf = ctx.createBuffer(1, noiseLen, ctx.sampleRate);
+        const data = nBuf.getChannelData(0);
+        for (let i = 0; i < noiseLen; i++) data[i] = Math.random() * 2 - 1;
+
+        const nSrc = ctx.createBufferSource();
+        nSrc.buffer = nBuf;
+        const hp = ctx.createBiquadFilter();
+        hp.type = 'highpass';
+        hp.frequency.value = 3600 + tone * 3200;
+
+        const nEnv = ctx.createGain();
+        nEnv.gain.setValueAtTime(vel * (0.16 + tone * 0.16), t0);
+        nEnv.gain.exponentialRampToValueAtTime(0.0001, t0 + decay);
+
+        nSrc.connect(hp);
+        hp.connect(nEnv);
+        nEnv.connect(dest);
+        nSrc.start(t0);
+        nSrc.stop(t0 + decay + 0.03);
+        trackActiveNode(nSrc);
+      }
+    }
+
+    // =========================================================================
+    // 6. AUDACITY-STYLE AUDIO BUFFER EDITING, DSP & GLOBAL UNDO / REDO STACK
+    // =========================================================================
+    function cloneAudioBuffer(ctx, buffer) {
+      if (!buffer) return null;
+      const copy = ctx.createBuffer(buffer.numberOfChannels, buffer.length, buffer.sampleRate);
+      for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+        copy.getChannelData(ch).set(buffer.getChannelData(ch));
+      }
+      return copy;
+    }
+
+    function captureSessionSnapshot() {
+      const ctx = state.audioCtx;
+      return {
+        selectedTrackId: state.selectedTrackId,
+        bpm: state.bpm,
+        tracks: state.tracks.map(t => ({
+          id: t.id,
+          type: t.type,
+          name: t.name,
+          buffer: (t.type === 'audio' && t.buffer && ctx) ? cloneAudioBuffer(ctx, t.buffer) : t.buffer,
+          channel: t.channel,
+          notes: t.notes ? t.notes.map(n => ({ ...n })) : undefined,
+          instrument: t.instrument,
+          volume: t.volume,
+          pan: t.pan,
+          muted: t.muted,
+          solo: t.solo,
+          dsp: t.dsp ? { ...t.dsp } : undefined,
+          midiParams: t.midiParams ? { ...t.midiParams } : undefined
+        }))
+      };
+    }
+
+    function restoreSessionSnapshot(snap) {
+      if (!snap) return;
+      const ctx = state.audioCtx;
+      state.selectedTrackId = snap.selectedTrackId;
+      state.bpm = snap.bpm;
+      document.getElementById('bpmInput').value = snap.bpm;
+
+      state.tracks = snap.tracks.map(t => ({
+        ...t,
+        buffer: (t.type === 'audio' && t.buffer && ctx) ? cloneAudioBuffer(ctx, t.buffer) : t.buffer,
+        notes: t.notes ? t.notes.map(n => ({ ...n })) : undefined,
+        dsp: t.dsp ? { ...t.dsp } : undefined,
+        midiParams: t.midiParams ? { ...t.midiParams } : undefined,
+        _liveNodes: null
+      }));
+
+      if (state.isPlaying) {
+        startPlayback();
+      } else {
+        refreshAllLiveTrackGains();
+      }
+      renderTrackList();
+      syncInspectorUI();
+      updateEditToolbarState();
+    }
+
+    function recordUndoState() {
+      state.undoStack.push(captureSessionSnapshot());
+      if (state.undoStack.length > 25) state.undoStack.shift();
+      state.redoStack = [];
+      updateEditToolbarState();
+    }
+
+    function performUndo() {
+      if (state.undoStack.length === 0) return;
+      state.redoStack.push(captureSessionSnapshot());
+      const prev = state.undoStack.pop();
+      restoreSessionSnapshot(prev);
+      showToast('Undid last action.', 'info');
+    }
+
+    function performRedo() {
+      if (state.redoStack.length === 0) return;
+      state.undoStack.push(captureSessionSnapshot());
+      const next = state.redoStack.pop();
+      restoreSessionSnapshot(next);
+      showToast('Redid action.', 'info');
+    }
+
+    function performAudioEdit(action) {
+      const track = getSelectedTrack();
+      if (!track || track.type !== 'audio' || !track.buffer) {
+        showToast('Select an audio track first to edit its waveform.', 'warn');
+        return;
+      }
+
+      const ctx = ensureAudioContext();
+      const buf = track.buffer;
+      const sr = buf.sampleRate;
+      const channels = buf.numberOfChannels;
+      const hasSel = state.selectionStart !== null && state.selectionEnd !== null && (state.selectionEnd - state.selectionStart) > 0.01;
+
+      const startSample = hasSel ? Math.max(0, Math.floor(state.selectionStart * sr)) : 0;
+      const endSample = hasSel ? Math.min(buf.length, Math.floor(state.selectionEnd * sr)) : buf.length;
+
+      if (['trim', 'cut', 'silence'].includes(action) && !hasSel) {
+        showToast('Drag across the waveform to select a region first.', 'warn');
+        return;
+      }
+
+      recordUndoState();
+
+      if (action === 'trim') {
+        const newLen = Math.max(1, endSample - startSample);
+        const newBuf = ctx.createBuffer(channels, newLen, sr);
+        for (let ch = 0; ch < channels; ch++) {
+          newBuf.getChannelData(ch).set(buf.getChannelData(ch).subarray(startSample, endSample));
+        }
+        track.buffer = newBuf;
+        clearSelection();
+        state.currentTime = 0;
+        showToast('Trimmed waveform to selection.', 'success');
+      }
+
+      else if (action === 'cut') {
+        const cutLen = endSample - startSample;
+        const newLen = Math.max(1, buf.length - cutLen);
+        const newBuf = ctx.createBuffer(channels, newLen, sr);
+        for (let ch = 0; ch < channels; ch++) {
+          const oldData = buf.getChannelData(ch);
+          const newData = newBuf.getChannelData(ch);
+          newData.set(oldData.subarray(0, startSample), 0);
+          newData.set(oldData.subarray(endSample), startSample);
+        }
+        track.buffer = newBuf;
+        state.currentTime = startSample / sr;
+        clearSelection();
+        showToast('Cut selected audio region.', 'success');
+      }
+
+      else if (action === 'silence') {
+        for (let ch = 0; ch < channels; ch++) {
+          const data = buf.getChannelData(ch);
+          for (let i = startSample; i < endSample; i++) data[i] = 0;
+        }
+        showToast('Silenced selected region.', 'success');
+      }
+
+      else if (action === 'fadeIn') {
+        const fStart = hasSel ? startSample : 0;
+        const fEnd = hasSel ? endSample : Math.min(buf.length, Math.floor(1.5 * sr));
+        const span = Math.max(1, fEnd - fStart);
+        for (let ch = 0; ch < channels; ch++) {
+          const data = buf.getChannelData(ch);
+          for (let i = fStart; i < fEnd; i++) {
+            const gain = (i - fStart) / span;
+            data[i] *= gain * gain; // Smooth exponential-feel curve
+          }
+        }
+        showToast('Applied smooth Fade In.', 'success');
+      }
+
+      else if (action === 'fadeOut') {
+        const fStart = hasSel ? startSample : Math.max(0, buf.length - Math.floor(1.5 * sr));
+        const fEnd = hasSel ? endSample : buf.length;
+        const span = Math.max(1, fEnd - fStart);
+        for (let ch = 0; ch < channels; ch++) {
+          const data = buf.getChannelData(ch);
+          for (let i = fStart; i < fEnd; i++) {
+            const gain = 1 - (i - fStart) / span;
+            data[i] *= gain * gain;
+          }
+        }
+        showToast('Applied smooth Fade Out.', 'success');
+      }
+
+      else if (action === 'normalize') {
+        let peak = 0;
+        for (let ch = 0; ch < channels; ch++) {
+          const data = buf.getChannelData(ch);
+          for (let i = startSample; i < endSample; i++) {
+            const abs = Math.abs(data[i]);
+            if (abs > peak) peak = abs;
+          }
+        }
+        if (peak > 0.0001) {
+          const targetPeak = Math.pow(10, -1.0 / 20); // -1.0 dB = 0.89125
+          const scale = targetPeak / peak;
+          for (let ch = 0; ch < channels; ch++) {
+            const data = buf.getChannelData(ch);
+            for (let i = startSample; i < endSample; i++) {
+              data[i] = Math.max(-1, Math.min(1, data[i] * scale));
+            }
+          }
+          showToast('Normalized peak level to -1.0 dB.', 'success');
+        }
+      }
+
+      renderAllWaveforms();
+      drawRuler();
+    }
+
+    function applyNoiseGateToTrackBuffer() {
+      const track = getSelectedTrack();
+      if (!track || track.type !== 'audio' || !track.buffer) return;
+      ensureAudioContext();
+      recordUndoState();
+
+      const buf = track.buffer;
+      const sr = buf.sampleRate;
+      const threshLinear = Math.pow(10, track.dsp.gateThreshold / 20);
+      const releaseSamples = Math.floor(sr * 0.04); // 40ms smooth gate release
+
+      for (let ch = 0; ch < buf.numberOfChannels; ch++) {
+        const data = buf.getChannelData(ch);
+        let env = 0;
+        for (let i = 0; i < data.length; i++) {
+          const abs = Math.abs(data[i]);
+          env = abs > env ? abs : env * (1 - 1 / releaseSamples);
+          if (env < threshLinear) {
+            const ratio = Math.pow(env / Math.max(1e-6, threshLinear), 2);
+            data[i] *= ratio;
+          }
+        }
+      }
+      renderAllWaveforms();
+      showToast(`Applied Noise Gate (${track.dsp.gateThreshold} dB) to waveform.`, 'success');
+    }
+
+    async function bakeDspEffectsIntoBuffer() {
+      const track = getSelectedTrack();
+      if (!track || track.type !== 'audio' || !track.buffer) return;
+
+      ensureAudioContext();
+      recordUndoState();
+      const srcBuf = track.buffer;
+      const offline = new OfflineAudioContext(srcBuf.numberOfChannels, srcBuf.length, srcBuf.sampleRate);
+
+      const source = offline.createBufferSource();
+      source.buffer = srcBuf;
+
+      const chainOut = buildAudioTrackDspChain(offline, source, track, true);
+      chainOut.connect(offline.destination);
+      source.start(0);
+
+      const rendered = await offline.startRendering();
+      track.buffer = rendered;
+
+      // Reset real-time EQ/Reverb/Comp after baking so effects aren't doubled
+      track.dsp.eqLow = 0;
+      track.dsp.eqMid = 0;
+      track.dsp.eqHigh = 0;
+      track.dsp.reverbMix = 0;
+      track.dsp.compThreshold = 0;
+      track.dsp.compRatio = 1;
+      syncInspectorUI();
+      renderAllWaveforms();
+      showToast('Baked EQ, Compressor & Reverb into audio waveform.', 'success');
+    }
+
+    // =========================================================================
+    // 7. DSP CHAIN BUILDER (USED BY BOTH REAL-TIME PLAYBACK & OFFLINE EXPORT)
+    // =========================================================================
+    function buildAudioTrackDspChain(ctx, inputNode, track, skipVolumePan = false) {
+      const dsp = track.dsp;
+
+      // 3-Band EQ
+      const lowShelf = ctx.createBiquadFilter();
+      lowShelf.type = 'lowshelf';
+      lowShelf.frequency.value = 100;
+      lowShelf.gain.value = dsp.eqLow;
+
+      const midPeak = ctx.createBiquadFilter();
+      midPeak.type = 'peaking';
+      midPeak.frequency.value = 1000;
+      midPeak.Q.value = 1.0;
+      midPeak.gain.value = dsp.eqMid;
+
+      const highShelf = ctx.createBiquadFilter();
+      highShelf.type = 'highshelf';
+      highShelf.frequency.value = 8000;
+      highShelf.gain.value = dsp.eqHigh;
+
+      // Dynamics Compressor
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = dsp.compThreshold;
+      comp.ratio.value = dsp.compRatio;
+      comp.knee.value = 8;
+      comp.attack.value = dsp.compAttack || 0.01;
+      comp.release.value = dsp.compRelease || 0.18;
+
+      inputNode.connect(lowShelf);
+      lowShelf.connect(midPeak);
+      midPeak.connect(highShelf);
+      highShelf.connect(comp);
+
+      // Dry / Wet Convolution Reverb Send
+      const postFxSum = ctx.createGain();
+      const dryGain = ctx.createGain();
+      const wetGain = ctx.createGain();
+      const wet = dsp.reverbMix || 0;
+      dryGain.gain.value = 1 - wet * 0.45;
+      wetGain.gain.value = wet;
+
+      comp.connect(dryGain);
+      dryGain.connect(postFxSum);
+
+      if (wet > 0.005) {
+        const convolver = ctx.createConvolver();
+        // Ensure impulse matches context sample rate
+        if (ctx === state.audioCtx && state.reverbBuffers[dsp.reverbType]) {
+          convolver.buffer = state.reverbBuffers[dsp.reverbType];
+        } else {
+          convolver.buffer = createSingleImpulseBuffer(ctx, dsp.reverbType || 'room');
+        }
+        comp.connect(convolver);
+        convolver.connect(wetGain);
+        wetGain.connect(postFxSum);
+      }
+
+      if (skipVolumePan) return postFxSum;
+
+      // Track Volume & Stereo Pan
+      const trackGain = ctx.createGain();
+      trackGain.gain.value = isTrackAudible(track) ? track.volume : 0;
+
+      const panner = ctx.createStereoPanner();
+      panner.pan.value = track.pan || 0;
+
+      postFxSum.connect(trackGain);
+      trackGain.connect(panner);
+
+      // Store live references for real-time mixer tweaking
+      if (ctx === state.audioCtx) {
+        track._liveNodes = { lowShelf, midPeak, highShelf, comp, dryGain, wetGain, trackGain, panner };
+      }
+
+      return panner;
+    }
+
+    function createSingleImpulseBuffer(ctx, type) {
+      const cfg = type === 'hall' ? { d: 2.5, k: 2.1 } : type === 'plate' ? { d: 1.7, k: 2.4 } : { d: 1.1, k: 2.8 };
+      const len = Math.floor(ctx.sampleRate * cfg.d);
+      const buf = ctx.createBuffer(2, len, ctx.sampleRate);
+      for (let ch = 0; ch < 2; ch++) {
+        const data = buf.getChannelData(ch);
+        for (let i = 0; i < len; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, cfg.k) * 0.45;
+        }
+      }
+      return buf;
+    }
+
+    function isTrackAudible(track) {
+      const anySolo = state.tracks.some(t => t.solo);
+      if (anySolo) return track.solo;
+      return !track.muted;
+    }
+
+    function refreshAllLiveTrackGains() {
+      state.tracks.forEach(t => {
+        syncTrackAudioParams(t);
+      });
+    }
+
+    // =========================================================================
+    // 8. PLAYBACK ENGINE (AUDIO BUFFERS + LOOKAHEAD MIDI SCHEDULER)
+    // =========================================================================
+    function startPlayback() {
+      if (state.tracks.length === 0) {
+        showToast('Import an audio/MIDI file or click "Load Demo Session" first.', 'warn');
+        return;
+      }
+      const ctx = ensureAudioContext();
+      stopAllActiveNodes();
+
+      // If looping with a selection, start at selection start
+      if (state.isLooping && state.selectionStart !== null && state.selectionEnd !== null) {
+        if (state.currentTime < state.selectionStart || state.currentTime >= state.selectionEnd) {
+          state.currentTime = state.selectionStart;
+        }
+      } else if (state.currentTime >= getSongDuration()) {
+        state.currentTime = 0;
+      }
+
+      state.isPlaying = true;
+      state.playStartWallTime = ctx.currentTime;
+      state.playStartSongTime = state.currentTime;
+      state.midiScheduledUntil = state.currentTime;
+
+      updateTransportButtons();
+
+      // Schedule Audio Tracks immediately from currentTime
+      state.tracks.forEach(track => {
+        if (track.type === 'audio' && track.buffer) {
+          if (state.currentTime < track.buffer.duration) {
+            const src = ctx.createBufferSource();
+            src.buffer = track.buffer;
+            const chainOut = buildAudioTrackDspChain(ctx, src, track, false);
+            chainOut.connect(state.masterGain);
+            src.start(ctx.currentTime, state.currentTime);
+            trackActiveNode(src);
+          }
+        } else if (track.type === 'midi') {
+          setupLiveMidiTrackBus(ctx, track);
+        }
+      });
+
+      // Lookahead MIDI Scheduler Loop (runs every 30ms, schedules 140ms ahead for rock-solid timing)
+      state.schedulerTimer = setInterval(() => {
+        if (!state.isPlaying) return;
+        const now = ctx.currentTime;
+        const songPos = state.playStartSongTime + (now - state.playStartWallTime);
+        const lookaheadEnd = songPos + 0.14;
+
+        scheduleMidiWindow(ctx, state.midiScheduledUntil, lookaheadEnd, now, songPos);
+        state.midiScheduledUntil = lookaheadEnd;
+      }, 28);
+
+      requestAnimationFrame(animationTick);
+    }
+
+    function setupLiveMidiTrackBus(ctx, track) {
+      getOrCreateTrackBus(ctx, track, state.masterGain);
+    }
+
+    function scheduleMidiWindow(ctx, windowStart, windowEnd, wallNow, currentSongPos) {
+      state.tracks.forEach(track => {
+        if (track.type !== 'midi') return;
+        const busInput = getOrCreateTrackBus(ctx, track, state.masterGain);
+        const humanize = track.midiParams.humanize ?? 0.35;
+
+        for (const n of track.notes) {
+          if (n.start >= windowStart && n.start < windowEnd) {
+            const timingJitter = (Math.random() - 0.5) * 0.07 * humanize; // up to ±35ms drift at 100%
+            const velJitter = 1 + (Math.random() - 0.5) * 0.8 * humanize;  // up to ±40% dynamic velocity swing
+            const exactWhen = Math.max(wallNow, wallNow + (n.start - currentSongPos) + timingJitter);
+
+            const adjustedNote = {
+              ...n,
+              velocity: Math.min(127, Math.max(12, Math.round(n.velocity * velJitter)))
+            };
+
+            triggerRealisticInstrumentNote(
+              ctx,
+              busInput,
+              track.instrument,
+              adjustedNote,
+              exactWhen,
+              track.midiParams
+            );
+          }
+        }
+      });
+    }
+
+    function pausePlayback() {
+      if (!state.isPlaying) return;
+      state.isPlaying = false;
+      stopAllActiveNodes();
+      updateTransportButtons();
+    }
+
+    function stopPlayback() {
+      state.isPlaying = false;
+      stopAllActiveNodes();
+      state.currentTime = (state.selectionStart !== null) ? state.selectionStart : 0;
+      updateTransportButtons();
+      updateTimecodeUI();
+      renderAllWaveforms();
+      drawRuler();
+    }
+
+    function stopAllActiveNodes() {
+      if (state.schedulerTimer) {
+        clearInterval(state.schedulerTimer);
+        state.schedulerTimer = null;
+      }
+      state.activeNodes.forEach(node => {
+        try { node.stop(); } catch (_) {}
+      });
+      state.activeNodes = [];
+    }
+
+    function animationTick() {
+      if (!state.isPlaying) return;
+      const ctx = state.audioCtx;
+      const elapsed = ctx.currentTime - state.playStartWallTime;
+      state.currentTime = state.playStartSongTime + elapsed;
+
+      const loopStart = (state.isLooping && state.selectionStart !== null) ? state.selectionStart : 0;
+      const loopEnd = (state.isLooping && state.selectionEnd !== null) ? state.selectionEnd : getSongDuration();
+
+      if (state.currentTime >= loopEnd) {
+        if (state.isLooping) {
+          state.currentTime = loopStart;
+          startPlayback();
+          return;
+        } else {
+          stopPlayback();
+          return;
+        }
+      }
+
+      updateTimecodeUI();
+      updateMasterMeter();
+      renderAllWaveforms();
+      drawRuler();
+      requestAnimationFrame(animationTick);
+    }
+
+    function updateMasterMeter() {
+      if (!state.masterAnalyser) return;
+      const data = new Uint8Array(state.masterAnalyser.frequencyBinCount);
+      state.masterAnalyser.getByteTimeDomainData(data);
+      let peak = 0;
+      for (let i = 0; i < data.length; i++) {
+        const v = Math.abs(data[i] - 128) / 128;
+        if (v > peak) peak = v;
+      }
+      const pct = Math.min(100, Math.round(peak * 145));
+      document.getElementById('masterMeterFill').style.width = `${pct}%`;
+    }
+
+    // =========================================================================
+    // 9. TRACK MANAGEMENT & DEMO ARRANGEMENT GENERATOR
+    // =========================================================================
+    function createAudioTrack(name, audioBuffer, skipHistory = false) {
+      if (!skipHistory) recordUndoState();
+      const track = {
+        id: 'trk_' + Math.random().toString(36).slice(2, 9),
+        type: 'audio',
+        name: name.replace(/\.[^/.]+$/, ''),
+        buffer: audioBuffer,
+        volume: 0.88,
+        pan: 0,
+        muted: false,
+        solo: false,
+        dsp: {
+          eqLow: 0,
+          eqMid: 0,
+          eqHigh: 0,
+          gateEnabled: false,
+          gateThreshold: -48,
+          compThreshold: -18,
+          compRatio: 3.0,
+          compAttack: 0.01,
+          compRelease: 0.18,
+          reverbType: 'room',
+          reverbMix: 0.12
+        }
+      };
+      state.tracks.push(track);
+      selectTrack(track.id);
+      renderTrackList();
+      return track;
+    }
+
+    function createMidiTrack(name, channel, notes, instrument = 'acoustic_piano', skipHistory = false) {
+      if (!skipHistory) recordUndoState();
+      const track = {
+        id: 'trk_' + Math.random().toString(36).slice(2, 9),
+        type: 'midi',
+        name,
+        channel,
+        notes,
+        instrument,
+        volume: 0.85,
+        pan: 0,
+        muted: false,
+        solo: false,
+        midiParams: {
+          reverb: instrument === 'solo_violin' ? 0.42 : 0.26,
+          tone: 0.68,
+          humanize: 0.35
+        }
+      };
+      state.tracks.push(track);
+      selectTrack(track.id);
+      renderTrackList();
+      return track;
+    }
+
+    function deleteTrack(trackId) {
+      const idx = state.tracks.findIndex(t => t.id === trackId);
+      if (idx === -1) return;
+      recordUndoState();
+      state.tracks.splice(idx, 1);
+      if (state.selectedTrackId === trackId) {
+        state.selectedTrackId = state.tracks[0]?.id || null;
+      }
+      renderTrackList();
+      syncInspectorUI();
+      updateEditToolbarState();
+    }
+
+    function selectTrack(trackId) {
+      state.selectedTrackId = trackId;
+      document.querySelectorAll('.track-row').forEach(el => {
+        el.classList.toggle('track-selected', el.dataset.trackId === trackId);
+      });
+      syncInspectorUI();
+      updateEditToolbarState();
+    }
+
+    /**
+     * Generates an expressive, musical 8-bar multi-track arrangement
+     * showcasing Acoustic Piano, Solo Violin, Clean Electric Guitar, Electric Bass, and Drums.
+     */
+    function loadExpressiveDemoSession() {
+      stopPlayback();
+      if (state.tracks.length > 0) {
+        recordUndoState();
+      }
+      state.tracks = [];
+      state.bpm = 104;
+      document.getElementById('bpmInput').value = 104;
+      const beat = 60 / state.bpm;
+
+      // Chord progression: Fmaj7 -> Em7 -> Dm7 -> Cmaj7 (2 bars each = 8 beats each)
+      const chords = [
+        { root: 41, notes: [53, 57, 60, 64], startBeat: 0 },   // Fmaj7
+        { root: 40, notes: [52, 55, 59, 62], startBeat: 8 },   // Em7
+        { root: 38, notes: [50, 53, 57, 60], startBeat: 16 },  // Dm7
+        { root: 36, notes: [48, 52, 55, 59], startBeat: 24 }   // Cmaj7
+      ];
+
+      // 1. Acoustic Grand Piano (Warm arpeggiated chords)
+      const pianoNotes = [];
+      chords.forEach(c => {
+        for (let bar = 0; bar < 2; bar++) {
+          const b0 = c.startBeat + bar * 4;
+          c.notes.forEach((n, idx) => {
+            pianoNotes.push({
+              note: n,
+              velocity: idx === 3 ? 86 : 72,
+              start: (b0 + idx * 0.5) * beat,
+              duration: (3.8 - idx * 0.4) * beat
+            });
+          });
+        }
+      });
+      createMidiTrack('Grand Piano Chords', 0, pianoNotes, 'acoustic_piano', true);
+
+      // 2. Solo Violin (Expressive soaring melody with vibrato)
+      const violinMelody = [
+        { n: 76, b: 1, d: 2.5, v: 92 }, { n: 74, b: 3.5, d: 1.5, v: 84 },
+        { n: 72, b: 5, d: 2.5, v: 88 },
+        { n: 74, b: 9, d: 2.5, v: 90 }, { n: 71, b: 11.5, d: 1.5, v: 82 },
+        { n: 69, b: 13, d: 2.5, v: 86 },
+        { n: 72, b: 17, d: 2.0, v: 94 }, { n: 74, b: 19, d: 2.0, v: 96 },
+        { n: 76, b: 21, d: 2.8, v: 98 },
+        { n: 79, b: 25, d: 2.5, v: 95 }, { n: 76, b: 27.5, d: 1.5, v: 86 },
+        { n: 72, b: 29, d: 2.8, v: 84 }
+      ].map(m => ({ note: m.n, start: m.b * beat, duration: m.d * beat, velocity: m.v }));
+      const vTrack = createMidiTrack('Solo Violin Lead', 1, violinMelody, 'solo_violin', true);
+      vTrack.pan = -0.18;
+
+      // 3. Clean Electric Guitar (Karplus-Strong syncopated jazz comping)
+      const guitarNotes = [];
+      chords.forEach(c => {
+        [1.5, 3.0, 5.5, 7.0].forEach(offset => {
+          [c.notes[1] + 12, c.notes[3] + 12].forEach((gn, i) => {
+            guitarNotes.push({
+              note: gn,
+              start: (c.startBeat + offset + i * 0.04) * beat,
+              duration: 0.85 * beat,
+              velocity: 78
+            });
+          });
+        });
+      });
+      const gTrack = createMidiTrack('Clean Jazz Guitar', 2, guitarNotes, 'electric_guitar_clean', true);
+      gTrack.pan = 0.24;
+
+      // 4. Warm Electric Bass
+      const bassNotes = [];
+      chords.forEach(c => {
+        [0, 2.5, 4, 6.5].forEach((offset, idx) => {
+          bassNotes.push({
+            note: idx === 3 ? c.root + 7 : c.root,
+            start: (c.startBeat + offset) * beat,
+            duration: 1.4 * beat,
+            velocity: 94
+          });
+        });
+      });
+      createMidiTrack('Warm Electric Bass', 3, bassNotes, 'electric_bass', true);
+
+      // 5. Acoustic Studio Drums
+      const drumNotes = [];
+      for (let b = 0; b < 32; b++) {
+        // Closed Hi-Hat 8th notes
+        drumNotes.push({ note: 42, start: b * beat, duration: 0.2, velocity: b % 2 === 0 ? 78 : 58 });
+        drumNotes.push({ note: 42, start: (b + 0.5) * beat, duration: 0.2, velocity: 54 });
+        // Kick on 1 and 2.5
+        if (b % 4 === 0 || b % 4 === 2) {
+          drumNotes.push({ note: 36, start: b * beat, duration: 0.3, velocity: 102 });
+        }
+        // Snare on 2 and 4
+        if (b % 4 === 1 || b % 4 === 3) {
+          drumNotes.push({ note: 38, start: b * beat, duration: 0.3, velocity: 96 });
+        }
+      }
+      createMidiTrack('Studio Drum Kit', 9, drumNotes, 'acoustic_drums', true);
+
+      selectTrack(vTrack.id);
+      renderTrackList();
+      showToast('Loaded expressive 5-track session! Click any MIDI track to swap instruments.', 'success');
+    }
+
+    // =========================================================================
+    // 10. UI RENDERING: TRACK LIST, WAVEFORMS, PIANO ROLLS & INSPECTOR
+    // =========================================================================
+    function syncMuteAllCheckbox() {
+      const cb = document.getElementById('muteAllCheckbox');
+      if (!cb) return;
+      if (state.tracks.length === 0) {
+        cb.checked = false;
+        cb.indeterminate = false;
+        cb.disabled = true;
+        return;
+      }
+      cb.disabled = false;
+      const mutedCount = state.tracks.filter(t => t.muted).length;
+      if (mutedCount === state.tracks.length) {
+        cb.checked = true;
+        cb.indeterminate = false;
+      } else if (mutedCount === 0) {
+        cb.checked = false;
+        cb.indeterminate = false;
+      } else {
+        cb.checked = false;
+        cb.indeterminate = true;
+      }
+    }
+
+    function renderTrackList() {
+      const container = document.getElementById('tracksContainer');
+      const emptyState = document.getElementById('emptyState');
+      document.getElementById('trackCount').textContent = state.tracks.length;
+      syncMuteAllCheckbox();
+
+      if (state.tracks.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        drawRuler();
+        return;
+      }
+      emptyState.classList.add('hidden');
+
+      container.innerHTML = state.tracks.map(track => {
+        const isSelected = track.id === state.selectedTrackId;
+        const badgeHtml = track.type === 'midi'
+          ? `<span class="text-[10px] font-mono px-1.5 py-0 rounded bg-claude-accentSoft text-claude-accent border border-claude-accent/30 truncate max-w-[125px] leading-4">${INSTRUMENT_META[track.instrument]?.name.split(' (')[0] || 'MIDI'}</span>`
+          : `<span class="text-[10px] font-mono px-1.5 py-0 rounded bg-claude-sky/15 text-claude-sky border border-claude-sky/30 leading-4">AUDIO</span>`;
+
+        return `
+          <div class="track-row flex-none h-[78px] flex items-stretch bg-claude-surface hover:bg-[#25252a] transition ${isSelected ? 'track-selected' : ''}" data-track-id="${track.id}">
+            <!-- Left Track Header & Mixer Strip -->
+            <div class="w-56 sm:w-64 shrink-0 px-2.5 py-1.5 border-r border-claude-border flex flex-col justify-between cursor-pointer" onclick="selectTrack('${track.id}')">
+              <div class="flex items-center justify-between gap-1">
+                <input type="text" value="${escapeHtml(track.name)}" onclick="event.stopPropagation()" onchange="renameTrack('${track.id}', this.value)"
+                  class="bg-transparent hover:bg-claude-bg focus:bg-claude-bg border border-transparent focus:border-claude-accent rounded px-1 py-0 text-xs font-semibold text-white w-full focus:outline-none truncate leading-tight" />
+                <button onclick="event.stopPropagation(); deleteTrack('${track.id}')" title="Delete Track" class="text-white hover:text-claude-rose p-0.5 rounded transition shrink-0">
+                  <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+              </div>
+
+              <div class="flex items-center justify-between gap-1">
+                ${badgeHtml}
+                <div class="flex items-center gap-1">
+                  <button onclick="event.stopPropagation(); toggleMute('${track.id}')" title="Mute Track"
+                    class="w-5 h-4 rounded text-[9px] font-mono font-bold border transition flex items-center justify-center ${track.muted ? 'bg-claude-rose/25 border-claude-rose text-claude-rose' : 'bg-claude-bg border-claude-border text-white hover:text-claude-accent'}">M</button>
+                  <button onclick="event.stopPropagation(); toggleSolo('${track.id}')" title="Solo Track"
+                    class="w-5 h-4 rounded text-[9px] font-mono font-bold border transition flex items-center justify-center ${track.solo ? 'bg-claude-amber/25 border-claude-amber text-claude-amber' : 'bg-claude-bg border-claude-border text-white hover:text-claude-accent'}">S</button>
+                </div>
+              </div>
+
+              <!-- Compact Volume & Pan Sliders -->
+              <div class="grid grid-cols-2 gap-2" onclick="event.stopPropagation()">
+                <div class="flex flex-col">
+                  <div class="flex justify-between text-[8px] font-mono text-white leading-none mb-0.5">
+                    <span>VOL</span><span>${Math.round(track.volume * 100)}%</span>
+                  </div>
+                  <input type="range" min="0" max="1.25" step="0.01" value="${track.volume}"
+                    oninput="setTrackVolume('${track.id}', this.value, this)" class="w-full h-2.5" />
+                </div>
+                <div class="flex flex-col">
+                  <div class="flex justify-between text-[8px] font-mono text-white leading-none mb-0.5">
+                    <span>PAN</span><span>${track.pan === 0 ? 'C' : (track.pan < 0 ? 'L' + Math.abs(Math.round(track.pan * 100)) : 'R' + Math.round(track.pan * 100))}</span>
+                  </div>
+                  <input type="range" min="-1" max="1" step="0.05" value="${track.pan}"
+                    oninput="setTrackPan('${track.id}', this.value, this)" class="w-full h-2.5 accent-sage" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Interactive Waveform / MIDI Piano-Roll Canvas -->
+            <div class="flex-1 relative h-full bg-[#1a1a1e] overflow-hidden cursor-crosshair track-canvas-wrap" data-track-id="${track.id}">
+              <canvas id="canvas_${track.id}" class="w-full h-full block"></canvas>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      attachCanvasInteractions();
+      renderAllWaveforms();
+      drawRuler();
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+    }
+
+    function renameTrack(id, newName) {
+      const t = state.tracks.find(x => x.id === id);
+      if (t && newName.trim() && t.name !== newName.trim()) {
+        recordUndoState();
+        t.name = newName.trim();
+        syncInspectorUI();
+      }
+    }
+
+    function toggleMute(id) {
+      const t = state.tracks.find(x => x.id === id);
+      if (!t) return;
+      recordUndoState();
+      t.muted = !t.muted;
+      refreshAllLiveTrackGains();
+      renderTrackList();
+    }
+
+    function toggleSolo(id) {
+      const t = state.tracks.find(x => x.id === id);
+      if (!t) return;
+      recordUndoState();
+      t.solo = !t.solo;
+      refreshAllLiveTrackGains();
+      renderTrackList();
+    }
+
+    function setTrackVolume(id, val, inputEl) {
+      const t = state.tracks.find(x => x.id === id);
+      if (!t) return;
+      t.volume = parseFloat(val);
+      if (inputEl && inputEl.previousElementSibling) {
+        inputEl.previousElementSibling.lastElementChild.textContent = `${Math.round(t.volume * 100)}%`;
+      }
+      if (t.id === state.selectedTrackId && t.type === 'midi') {
+        const inspVol = document.getElementById('midiVolSlider');
+        const inspVal = document.getElementById('midiVolVal');
+        if (inspVol) inspVol.value = t.volume;
+        if (inspVal) inspVal.textContent = `${Math.round(t.volume * 100)}%`;
+      }
+      syncTrackAudioParams(t);
+    }
+
+    function setTrackPan(id, val, inputEl) {
+      const t = state.tracks.find(x => x.id === id);
+      if (!t) return;
+      t.pan = parseFloat(val);
+      const label = t.pan === 0 ? 'C' : (t.pan < 0 ? 'L' + Math.abs(Math.round(t.pan * 100)) : 'R' + Math.round(t.pan * 100));
+      if (inputEl && inputEl.previousElementSibling) {
+        inputEl.previousElementSibling.lastElementChild.textContent = label;
+      }
+      if (t.id === state.selectedTrackId && t.type === 'midi') {
+        const inspPan = document.getElementById('midiPanSlider');
+        const inspVal = document.getElementById('midiPanVal');
+        if (inspPan) inspPan.value = t.pan;
+        if (inspVal) inspVal.textContent = label;
+      }
+      syncTrackAudioParams(t);
+    }
+
+    // =========================================================================
+    // 11. HIGH-DPI CANVAS RENDERING (RULER, WAVEFORMS & MIDI PIANO ROLL)
+    // =========================================================================
+    function getPxPerSec() {
+      return BASE_PX_PER_SEC * state.zoom;
+    }
+
+    function drawRuler() {
+      const canvas = document.getElementById('rulerCanvas');
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+      canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      const w = rect.width;
+      const h = rect.height;
+      const pxPerSec = getPxPerSec();
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Selection highlight on ruler
+      if (state.selectionStart !== null && state.selectionEnd !== null) {
+        const x1 = state.selectionStart * pxPerSec;
+        const x2 = state.selectionEnd * pxPerSec;
+        ctx.fillStyle = 'rgba(217, 119, 87, 0.25)';
+        ctx.fillRect(x1, 0, Math.max(2, x2 - x1), h);
+      }
+
+      // Second / Beat ticks
+      ctx.strokeStyle = '#383842';
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '10px "JetBrains Mono", monospace';
+
+      const maxSec = Math.ceil(w / pxPerSec) + 1;
+      for (let s = 0; s <= maxSec; s++) {
+        const x = s * pxPerSec;
+        ctx.beginPath();
+        ctx.moveTo(x, h - 10);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+
+        if (pxPerSec >= 35 || s % 2 === 0) {
+          ctx.fillText(`${s}s`, x + 4, 13);
+        }
+      }
+
+      // Playhead triangle marker
+      const px = state.currentTime * pxPerSec;
+      ctx.fillStyle = '#d97757';
+      ctx.beginPath();
+      ctx.moveTo(px - 5, 0);
+      ctx.lineTo(px + 5, 0);
+      ctx.lineTo(px, 9);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function renderAllWaveforms() {
+      state.tracks.forEach(track => {
+        const canvas = document.getElementById(`canvas_${track.id}`);
+        if (!canvas) return;
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+        canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+
+        const ctx = canvas.getContext('2d');
+        ctx.scale(dpr, dpr);
+        const w = rect.width;
+        const h = rect.height;
+        const pxPerSec = getPxPerSec();
+
+        // Subtle grid lines every second
+        ctx.strokeStyle = '#232329';
+        ctx.lineWidth = 1;
+        const maxSec = Math.ceil(w / pxPerSec);
+        for (let s = 1; s <= maxSec; s++) {
+          const gx = s * pxPerSec;
+          ctx.beginPath();
+          ctx.moveTo(gx, 0);
+          ctx.lineTo(gx, h);
+          ctx.stroke();
+        }
+
+        // Selection Region Overlay
+        if (state.selectionStart !== null && state.selectionEnd !== null) {
+          const sx1 = state.selectionStart * pxPerSec;
+          const sx2 = state.selectionEnd * pxPerSec;
+          ctx.fillStyle = 'rgba(217, 119, 87, 0.16)';
+          ctx.fillRect(sx1, 0, Math.max(2, sx2 - sx1), h);
+          ctx.strokeStyle = 'rgba(217, 119, 87, 0.65)';
+          ctx.strokeRect(sx1, 0, Math.max(2, sx2 - sx1), h);
+        }
+
+        if (track.type === 'audio' && track.buffer) {
+          drawAudioWaveform(ctx, track, w, h, pxPerSec);
+        } else if (track.type === 'midi') {
+          drawMidiPianoRoll(ctx, track, w, h, pxPerSec);
+        }
+
+        // Playhead Vertical Line
+        const playX = state.currentTime * pxPerSec;
+        ctx.strokeStyle = '#d97757';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(playX, 0);
+        ctx.lineTo(playX, h);
+        ctx.stroke();
+      });
+    }
+
+    function drawAudioWaveform(ctx, track, w, h, pxPerSec) {
+      const buf = track.buffer;
+      const data = buf.getChannelData(0);
+      const sr = buf.sampleRate;
+      const totalPx = Math.min(w, Math.ceil(buf.duration * pxPerSec));
+      const midY = h / 2;
+
+      // Center zero line
+      ctx.strokeStyle = '#2e2e36';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, midY);
+      ctx.lineTo(totalPx, midY);
+      ctx.stroke();
+
+      ctx.fillStyle = track.muted ? '#555562' : '#6b9ed4';
+      const samplesPerPx = Math.max(1, Math.floor(sr / pxPerSec));
+
+      for (let x = 0; x < totalPx; x++) {
+        const startIdx = Math.floor((x / pxPerSec) * sr);
+        let min = 1.0;
+        let max = -1.0;
+        const step = Math.max(1, Math.floor(samplesPerPx / 24));
+        for (let i = 0; i < samplesPerPx && (startIdx + i) < data.length; i += step) {
+          const val = data[startIdx + i];
+          if (val < min) min = val;
+          if (val > max) max = val;
+        }
+        if (min > max) { min = 0; max = 0; }
+        const yTop = midY - max * (midY * 0.86);
+        const yBot = midY - min * (midY * 0.86);
+        ctx.fillRect(x, yTop, 1, Math.max(1.5, yBot - yTop));
+      }
+    }
+
+    function drawMidiPianoRoll(ctx, track, w, h, pxPerSec) {
+      if (!track.notes || track.notes.length === 0) return;
+
+      let minNote = 127, maxNote = 0;
+      track.notes.forEach(n => {
+        if (n.note < minNote) minNote = n.note;
+        if (n.note > maxNote) maxNote = n.note;
+      });
+      const span = Math.max(12, (maxNote - minNote) + 4);
+      const padBottom = minNote - 2;
+
+      ctx.fillStyle = track.muted ? '#5a5a66' : '#d97757';
+      track.notes.forEach(n => {
+        const x = n.start * pxPerSec;
+        const noteW = Math.max(3, n.duration * pxPerSec - 1);
+        if (x > w) return;
+        const normY = (n.note - padBottom) / span;
+        const y = h - 10 - normY * (h - 20);
+        ctx.beginPath();
+        ctx.roundRect(x, y, noteW, 5, 2);
+        ctx.fill();
+      });
+    }
+
+    // =========================================================================
+    // 12. INTERACTIVE MOUSE / TOUCH TIMELINE SEEK & SELECTION
+    // =========================================================================
+    function attachCanvasInteractions() {
+      document.querySelectorAll('.track-canvas-wrap').forEach(wrap => {
+        const trackId = wrap.dataset.trackId;
+
+        const getTimeFromClientX = (clientX) => {
+          const rect = wrap.getBoundingClientRect();
+          const x = Math.max(0, clientX - rect.left);
+          return x / getPxPerSec();
+        };
+
+        wrap.addEventListener('mousedown', (e) => {
+          selectTrack(trackId);
+          const t = getTimeFromClientX(e.clientX);
+          state.isDraggingSelection = true;
+          state.dragAnchorTime = t;
+          state.currentTime = t;
+          clearSelection(false);
+          updateTimecodeUI();
+          renderAllWaveforms();
+          drawRuler();
+        });
+
+        window.addEventListener('mousemove', (e) => {
+          if (!state.isDraggingSelection) return;
+          const t = getTimeFromClientX(e.clientX);
+          if (Math.abs(t - state.dragAnchorTime) > 0.03) {
+            state.selectionStart = Math.min(state.dragAnchorTime, t);
+            state.selectionEnd = Math.max(state.dragAnchorTime, t);
+            updateSelectionBadge();
+            renderAllWaveforms();
+            drawRuler();
+          }
+        });
+
+        window.addEventListener('mouseup', () => {
+          if (state.isDraggingSelection) {
+            state.isDraggingSelection = false;
+            updateEditToolbarState();
+          }
+        });
+      });
+    }
+
+    document.getElementById('timelineRulerContainer').addEventListener('mousedown', (e) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = Math.max(0, e.clientX - rect.left);
+      state.currentTime = x / getPxPerSec();
+      if (state.isPlaying) {
+        startPlayback();
+      } else {
+        updateTimecodeUI();
+        renderAllWaveforms();
+        drawRuler();
+      }
+    });
+
+    function clearSelection(redraw = true) {
+      state.selectionStart = null;
+      state.selectionEnd = null;
+      updateSelectionBadge();
+      updateEditToolbarState();
+      if (redraw) {
+        renderAllWaveforms();
+        drawRuler();
+      }
+    }
+
+    function updateSelectionBadge() {
+      const badge = document.getElementById('selectionBadge');
+      const clearBtn = document.getElementById('btnClearSelection');
+      if (state.selectionStart !== null && state.selectionEnd !== null) {
+        const dur = (state.selectionEnd - state.selectionStart).toFixed(2);
+        badge.textContent = `Selected: ${state.selectionStart.toFixed(2)}s → ${state.selectionEnd.toFixed(2)}s (${dur}s)`;
+        badge.classList.add('text-claude-accent', 'border-claude-accent/40');
+        clearBtn.classList.remove('hidden');
+      } else {
+        badge.textContent = 'No region selected — drag across any waveform to select';
+        badge.classList.remove('text-claude-accent', 'border-claude-accent/40');
+        clearBtn.classList.add('hidden');
+      }
+    }
+
+    function updateEditToolbarState() {
+      const track = getSelectedTrack();
+      const isAudio = track && track.type === 'audio' && track.buffer;
+      document.querySelectorAll('.edit-tool-btn').forEach(btn => {
+        btn.disabled = !isAudio;
+      });
+      const canUndo = state.undoStack.length > 0;
+      const canRedo = state.redoStack.length > 0;
+      document.getElementById('btnEditUndo').disabled = !canUndo;
+      document.getElementById('btnEditRedo').disabled = !canRedo;
+      document.getElementById('btnTopUndo').disabled = !canUndo;
+      document.getElementById('btnTopRedo').disabled = !canRedo;
+    }
+
+    // =========================================================================
+    // 13. INSPECTOR PANEL SYNCHRONIZATION
+    // =========================================================================
+    function syncInspectorUI() {
+      const track = getSelectedTrack();
+      const badge = document.getElementById('inspectorBadge');
+      const title = document.getElementById('inspectorTitle');
+      const subtitle = document.getElementById('inspectorSubtitle');
+      const empty = document.getElementById('inspectorEmpty');
+      const midiPanel = document.getElementById('midiInspector');
+      const audioPanel = document.getElementById('audioInspector');
+
+      if (!track) {
+        badge.textContent = 'No Track Selected';
+        title.textContent = 'Track Inspector';
+        subtitle.textContent = 'Select any track on the left to customize its sound or effects.';
+        empty.classList.remove('hidden');
+        midiPanel.classList.add('hidden');
+        audioPanel.classList.add('hidden');
+        return;
+      }
+
+      empty.classList.add('hidden');
+      title.textContent = track.name;
+
+      if (track.type === 'midi') {
+        badge.textContent = 'MIDI Instrument Track';
+        badge.className = 'text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-claude-accentSoft text-claude-accent border border-claude-accent/30';
+        subtitle.textContent = 'Assign a realistic physical-model instrument to this MIDI part.';
+        midiPanel.classList.remove('hidden');
+        midiPanel.classList.add('flex');
+        audioPanel.classList.add('hidden');
+
+        document.getElementById('midiChannelLabel').textContent = `Ch ${track.channel + 1}`;
+        document.getElementById('midiInstrumentSelect').value = track.instrument;
+        document.getElementById('instrumentDescription').textContent = INSTRUMENT_META[track.instrument]?.desc || '';
+
+        document.getElementById('midiVolSlider').value = track.volume;
+        document.getElementById('midiVolVal').textContent = `${Math.round(track.volume * 100)}%`;
+
+        document.getElementById('midiPanSlider').value = track.pan;
+        const panLabel = track.pan === 0 ? 'C' : (track.pan < 0 ? 'L' + Math.abs(Math.round(track.pan * 100)) : 'R' + Math.round(track.pan * 100));
+        document.getElementById('midiPanVal').textContent = panLabel;
+
+        document.getElementById('midiReverbSlider').value = track.midiParams.reverb;
+        document.getElementById('midiReverbVal').textContent = `${Math.round(track.midiParams.reverb * 100)}%`;
+
+        document.getElementById('midiToneSlider').value = track.midiParams.tone;
+        document.getElementById('midiToneVal').textContent = `${Math.round(track.midiParams.tone * 100)}%`;
+
+        document.getElementById('midiHumanizeSlider').value = track.midiParams.humanize;
+        document.getElementById('midiHumanizeVal').textContent = `${Math.round(track.midiParams.humanize * 100)}%`;
+
+        document.getElementById('midiNoteCount').textContent = track.notes.length;
+        if (track.notes.length > 0) {
+          const pitches = track.notes.map(n => n.note);
+          document.getElementById('midiNoteRange').textContent = `${midiNoteToName(Math.min(...pitches))}–${midiNoteToName(Math.max(...pitches))}`;
+        }
+      } else {
+        badge.textContent = 'Audio Waveform Track';
+        badge.className = 'text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-claude-sky/15 text-claude-sky border border-claude-sky/30';
+        subtitle.textContent = `${track.buffer.duration.toFixed(2)}s • ${track.buffer.sampleRate} Hz • ${track.buffer.numberOfChannels}ch`;
+        audioPanel.classList.remove('hidden');
+        audioPanel.classList.add('flex');
+        midiPanel.classList.add('hidden');
+
+        const d = track.dsp;
+        document.getElementById('eqLow').value = d.eqLow;
+        document.getElementById('eqLowVal').textContent = `${d.eqLow.toFixed(1)} dB`;
+        document.getElementById('eqMid').value = d.eqMid;
+        document.getElementById('eqMidVal').textContent = `${d.eqMid.toFixed(1)} dB`;
+        document.getElementById('eqHigh').value = d.eqHigh;
+        document.getElementById('eqHighVal').textContent = `${d.eqHigh.toFixed(1)} dB`;
+
+        document.getElementById('gateEnabled').checked = d.gateEnabled;
+        document.getElementById('gateThreshold').value = d.gateThreshold;
+        document.getElementById('gateThreshVal').textContent = `${d.gateThreshold} dB`;
+
+        document.getElementById('compThreshold').value = d.compThreshold;
+        document.getElementById('compThreshVal').textContent = `${d.compThreshold} dB`;
+        document.getElementById('compRatio').value = d.compRatio;
+        document.getElementById('compRatioVal').textContent = `${d.compRatio.toFixed(1)}:1`;
+
+        document.getElementById('reverbType').value = d.reverbType;
+        document.getElementById('reverbMix').value = d.reverbMix;
+        document.getElementById('reverbMixVal').textContent = `${Math.round(d.reverbMix * 100)}%`;
+      }
+    }
+
+    // =========================================================================
+    // 14. OFFLINE MIXDOWN & WAV EXPORT (16-BIT PCM STEREO)
+    // =========================================================================
+    async function exportProjectToWav() {
+      if (state.tracks.length === 0) {
+        showToast('Nothing to export yet — add audio or MIDI tracks first.', 'warn');
+        return;
+      }
+
+      showToast('Rendering studio mixdown to WAV...', 'info');
+      const sampleRate = 44100;
+      const duration = getSongDuration() + 0.5;
+      const totalSamples = Math.ceil(duration * sampleRate);
+
+      const offline = new OfflineAudioContext(2, totalSamples, sampleRate);
+      const masterGain = offline.createGain();
+      masterGain.gain.value = state.masterVolume;
+
+      const limiter = offline.createDynamicsCompressor();
+      limiter.threshold.value = -1.5;
+      limiter.ratio.value = 12;
+      masterGain.connect(limiter);
+      limiter.connect(offline.destination);
+
+      for (const track of state.tracks) {
+        if (!isTrackAudible(track)) continue;
+
+        if (track.type === 'audio' && track.buffer) {
+          const src = offline.createBufferSource();
+          src.buffer = track.buffer;
+          const out = buildAudioTrackDspChain(offline, src, track, false);
+          out.connect(masterGain);
+          src.start(0);
+        } else if (track.type === 'midi') {
+          const bus = getOrCreateTrackBus(offline, track, masterGain);
+          const humanize = track.midiParams.humanize ?? 0.35;
+
+          for (const n of track.notes) {
+            const timingJitter = (Math.random() - 0.5) * 0.07 * humanize;
+            const velJitter = 1 + (Math.random() - 0.5) * 0.8 * humanize;
+            const adjNote = {
+              ...n,
+              velocity: Math.min(127, Math.max(12, Math.round(n.velocity * velJitter)))
+            };
+            triggerRealisticInstrumentNote(offline, bus, track.instrument, adjNote, Math.max(0, n.start + timingJitter), track.midiParams);
+          }
+        }
+      }
+
+      const renderedBuffer = await offline.startRendering();
+      const wavBlob = audioBufferToWavBlob(renderedBuffer);
+      const url = URL.createObjectURL(wavBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `NickVogel-Studio-Mix-${new Date().toISOString().slice(0, 10)}.wav`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      showToast('Exported 16-bit Stereo WAV successfully!', 'success');
+    }
+
+    function audioBufferToWavBlob(buffer) {
+      const numChannels = buffer.numberOfChannels;
+      const sampleRate = buffer.sampleRate;
+      const format = 1; // PCM
+      const bitDepth = 16;
+      const bytesPerSample = bitDepth / 8;
+      const blockAlign = numChannels * bytesPerSample;
+      const dataSize = buffer.length * blockAlign;
+      const headerSize = 44;
+      const arrayBuffer = new ArrayBuffer(headerSize + dataSize);
+      const view = new DataView(arrayBuffer);
+
+      function writeString(offset, str) {
+        for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+      }
+
+      writeString(0, 'RIFF');
+      view.setUint32(4, 36 + dataSize, true);
+      writeString(8, 'WAVE');
+      writeString(12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, format, true);
+      view.setUint16(22, numChannels, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * blockAlign, true);
+      view.setUint16(32, blockAlign, true);
+      view.setUint16(34, bitDepth, true);
+      writeString(36, 'data');
+      view.setUint32(40, dataSize, true);
+
+      const channels = [];
+      for (let ch = 0; ch < numChannels; ch++) channels.push(buffer.getChannelData(ch));
+
+      let offset = 44;
+      for (let i = 0; i < buffer.length; i++) {
+        for (let ch = 0; ch < numChannels; ch++) {
+          const sample = Math.max(-1, Math.min(1, channels[ch][i]));
+          view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+          offset += 2;
+        }
+      }
+
+      return new Blob([arrayBuffer], { type: 'audio/wav' });
+    }
+
+    // =========================================================================
+    // 15. EVENT LISTENERS & INITIALIZATION
+    // =========================================================================
+    function updateTransportButtons() {
+      const iconPlay = document.getElementById('iconPlay');
+      const iconPause = document.getElementById('iconPause');
+      const label = document.getElementById('labelPlayPause');
+      if (state.isPlaying) {
+        iconPlay.classList.add('hidden');
+        iconPause.classList.remove('hidden');
+        label.textContent = 'Pause';
+      } else {
+        iconPlay.classList.remove('hidden');
+        iconPause.classList.add('hidden');
+        label.textContent = 'Play';
+      }
+    }
+
+    function updateTimecodeUI() {
+      document.getElementById('timecodeDisplay').textContent = formatTimecode(state.currentTime);
+      document.getElementById('barsBeatsDisplay').textContent = formatBarsBeats(state.currentTime, state.bpm);
+    }
+
+    // File Uploaders
+    document.getElementById('btnAddAudio').addEventListener('click', () => document.getElementById('audioFileInput').click());
+    document.getElementById('audioFileInput').addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
+      const ctx = ensureAudioContext();
+      for (const file of files) {
+        try {
+          const arr = await file.arrayBuffer();
+          const audioBuffer = await ctx.decodeAudioData(arr);
+          createAudioTrack(file.name, audioBuffer);
+          showToast(`Imported audio: ${file.name}`, 'success');
+        } catch (err) {
+          showToast(`Could not decode ${file.name}. Try WAV, MP3, or OGG.`, 'warn');
+        }
+      }
+      e.target.value = '';
+    });
+
+    document.getElementById('btnAddMidi').addEventListener('click', () => document.getElementById('midiFileInput').click());
+    document.getElementById('midiFileInput').addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const arr = await file.arrayBuffer();
+        const parsed = parseStandardMidiFile(arr);
+        if (parsed.tracks.length === 0) {
+          showToast('No playable MIDI note events found in file.', 'warn');
+          return;
+        }
+        state.bpm = parsed.bpm;
+        document.getElementById('bpmInput').value = parsed.bpm;
+
+        parsed.tracks.forEach(pt => {
+          createMidiTrack(pt.name, pt.channel, pt.notes, pt.suggestedInstrument);
+        });
+        showToast(`Loaded ${parsed.tracks.length} MIDI part(s) from ${file.name} (${parsed.bpm} BPM).`, 'success');
+      } catch (err) {
+        showToast(`MIDI Parse Error: ${err.message}`, 'warn');
+      }
+      e.target.value = '';
+    });
+
+    // Transport Controls
+    document.getElementById('btnLoadDemo').addEventListener('click', loadExpressiveDemoSession);
+    document.getElementById('btnPlayPause').addEventListener('click', () => {
+      state.isPlaying ? pausePlayback() : startPlayback();
+    });
+    document.getElementById('btnStop').addEventListener('click', stopPlayback);
+    document.getElementById('btnRewind').addEventListener('click', () => {
+      state.currentTime = 0;
+      if (state.isPlaying) startPlayback();
+      else { updateTimecodeUI(); renderAllWaveforms(); drawRuler(); }
+    });
+    document.getElementById('btnLoop').addEventListener('click', (e) => {
+      state.isLooping = !state.isLooping;
+      const btn = e.currentTarget;
+      btn.classList.toggle('text-claude-accent', state.isLooping);
+      btn.classList.toggle('bg-claude-accentSoft', state.isLooping);
+      btn.classList.toggle('text-white', !state.isLooping);
+      showToast(state.isLooping ? 'Loop playback enabled.' : 'Loop playback disabled.', 'info');
+    });
+
+    // Mute All Tracks Checkbox
+    document.getElementById('muteAllCheckbox').addEventListener('change', (e) => {
+      if (state.tracks.length === 0) return;
+      recordUndoState();
+      const shouldMuteAll = e.target.checked;
+      state.tracks.forEach(t => {
+        t.muted = shouldMuteAll;
+      });
+      refreshAllLiveTrackGains();
+      renderTrackList();
+      showToast(
+        shouldMuteAll
+          ? 'All tracks muted. Unmute any single track to isolate it.'
+          : 'All tracks unmuted.',
+        'info'
+      );
+    });
+
+    document.getElementById('bpmInput').addEventListener('change', (e) => {
+      state.bpm = Math.max(40, Math.min(240, parseInt(e.target.value, 10) || 108));
+      e.target.value = state.bpm;
+      updateTimecodeUI();
+    });
+
+    document.getElementById('masterVolume').addEventListener('input', (e) => {
+      state.masterVolume = parseFloat(e.target.value);
+      if (state.masterGain) {
+        state.masterGain.gain.setTargetAtTime(state.masterVolume, state.audioCtx.currentTime, 0.015);
+      }
+    });
+
+    document.getElementById('btnExportWav').addEventListener('click', exportProjectToWav);
+
+    // Audacity Edit & Top-Bar Undo/Redo Listeners
+    document.getElementById('btnEditTrim').addEventListener('click', () => performAudioEdit('trim'));
+    document.getElementById('btnEditCut').addEventListener('click', () => performAudioEdit('cut'));
+    document.getElementById('btnEditSilence').addEventListener('click', () => performAudioEdit('silence'));
+    document.getElementById('btnEditFadeIn').addEventListener('click', () => performAudioEdit('fadeIn'));
+    document.getElementById('btnEditFadeOut').addEventListener('click', () => performAudioEdit('fadeOut'));
+    document.getElementById('btnEditNormalize').addEventListener('click', () => performAudioEdit('normalize'));
+    document.getElementById('btnEditUndo').addEventListener('click', performUndo);
+    document.getElementById('btnEditRedo').addEventListener('click', performRedo);
+    document.getElementById('btnTopUndo').addEventListener('click', performUndo);
+    document.getElementById('btnTopRedo').addEventListener('click', performRedo);
+    document.getElementById('btnClearSelection').addEventListener('click', () => clearSelection(true));
+
+    // Zoom Controls
+    document.getElementById('btnZoomIn').addEventListener('click', () => {
+      state.zoom = Math.min(4.0, state.zoom * 1.25);
+      document.getElementById('zoomLabel').textContent = `${Math.round(state.zoom * 100)}%`;
+      renderAllWaveforms();
+      drawRuler();
+    });
+    document.getElementById('btnZoomOut').addEventListener('click', () => {
+      state.zoom = Math.max(0.4, state.zoom / 1.25);
+      document.getElementById('zoomLabel').textContent = `${Math.round(state.zoom * 100)}%`;
+      renderAllWaveforms();
+      drawRuler();
+    });
+
+    // MIDI Inspector Listeners
+    document.getElementById('midiInstrumentSelect').addEventListener('change', (e) => {
+      const track = getSelectedTrack();
+      if (!track || track.type !== 'midi') return;
+      recordUndoState();
+      track.instrument = e.target.value;
+      document.getElementById('instrumentDescription').textContent = INSTRUMENT_META[track.instrument]?.desc || '';
+      renderTrackList();
+      auditionCurrentInstrument();
+    });
+
+    function auditionCurrentInstrument() {
+      const track = getSelectedTrack();
+      if (!track || track.type !== 'midi') return;
+      const ctx = ensureAudioContext();
+      const busInput = getOrCreateTrackBus(ctx, track, state.masterGain);
+      const now = ctx.currentTime;
+      const humanize = track.midiParams.humanize ?? 0.35;
+
+      // Expressive 4-note phrase (Root -> Fifth -> Octave -> Third) routed through the track's live DSP bus
+      const phrase = track.instrument === 'acoustic_drums'
+        ? [
+            { note: 36, velocity: 105, duration: 0.28, offset: 0.00 },
+            { note: 42, velocity: 78, duration: 0.15, offset: 0.18 },
+            { note: 38, velocity: 100, duration: 0.28, offset: 0.36 },
+            { note: 49, velocity: 92, duration: 0.65, offset: 0.54 }
+          ]
+        : track.instrument === 'electric_bass'
+        ? [
+            { note: 40, velocity: 98, duration: 0.36, offset: 0.00 },
+            { note: 47, velocity: 86, duration: 0.32, offset: 0.24 },
+            { note: 52, velocity: 95, duration: 0.40, offset: 0.46 },
+            { note: 44, velocity: 90, duration: 0.65, offset: 0.70 }
+          ]
+        : [
+            { note: 60, velocity: 88, duration: 0.55, offset: 0.00 },
+            { note: 67, velocity: 82, duration: 0.55, offset: 0.22 },
+            { note: 72, velocity: 96, duration: 0.65, offset: 0.44 },
+            { note: 64, velocity: 85, duration: 0.85, offset: 0.68 }
+          ];
+
+      phrase.forEach((n) => {
+        const timingJitter = (Math.random() - 0.5) * 0.07 * humanize;
+        const velJitter = 1 + (Math.random() - 0.5) * 0.8 * humanize;
+        const adjNote = {
+          note: n.note,
+          duration: n.duration,
+          velocity: Math.min(127, Math.max(12, Math.round(n.velocity * velJitter)))
+        };
+        triggerRealisticInstrumentNote(
+          ctx,
+          busInput,
+          track.instrument,
+          adjNote,
+          Math.max(now, now + n.offset + timingJitter),
+          track.midiParams
+        );
+      });
+    }
+
+    document.getElementById('btnAuditionNote').addEventListener('click', auditionCurrentInstrument);
+
+    document.getElementById('midiVolSlider').addEventListener('input', (e) => {
+      const track = getSelectedTrack();
+      if (!track || track.type !== 'midi') return;
+      track.volume = parseFloat(e.target.value);
+      document.getElementById('midiVolVal').textContent = `${Math.round(track.volume * 100)}%`;
+      syncTrackAudioParams(track);
+      const row = document.querySelector(`.track-row[data-track-id="${track.id}"]`);
+      if (row) {
+        const sliders = row.querySelectorAll('input[type="range"]');
+        if (sliders[0]) {
+          sliders[0].value = track.volume;
+          sliders[0].previousElementSibling.lastElementChild.textContent = `${Math.round(track.volume * 100)}%`;
+        }
+      }
+    });
+
+    document.getElementById('midiPanSlider').addEventListener('input', (e) => {
+      const track = getSelectedTrack();
+      if (!track || track.type !== 'midi') return;
+      track.pan = parseFloat(e.target.value);
+      const label = track.pan === 0 ? 'C' : (track.pan < 0 ? 'L' + Math.abs(Math.round(track.pan * 100)) : 'R' + Math.round(track.pan * 100));
+      document.getElementById('midiPanVal').textContent = label;
+      syncTrackAudioParams(track);
+      const row = document.querySelector(`.track-row[data-track-id="${track.id}"]`);
+      if (row) {
+        const sliders = row.querySelectorAll('input[type="range"]');
+        if (sliders[1]) {
+          sliders[1].value = track.pan;
+          sliders[1].previousElementSibling.lastElementChild.textContent = label;
+        }
+      }
+    });
+
+    document.getElementById('midiReverbSlider').addEventListener('input', (e) => {
+      const track = getSelectedTrack();
+      if (!track || track.type !== 'midi') return;
+      track.midiParams.reverb = parseFloat(e.target.value);
+      document.getElementById('midiReverbVal').textContent = `${Math.round(track.midiParams.reverb * 100)}%`;
+      syncTrackAudioParams(track);
+    });
+
+    document.getElementById('midiToneSlider').addEventListener('input', (e) => {
+      const track = getSelectedTrack();
+      if (!track || track.type !== 'midi') return;
+      track.midiParams.tone = parseFloat(e.target.value);
+      document.getElementById('midiToneVal').textContent = `${Math.round(track.midiParams.tone * 100)}%`;
+      syncTrackAudioParams(track);
+    });
+
+    document.getElementById('midiHumanizeSlider').addEventListener('input', (e) => {
+      const track = getSelectedTrack();
+      if (!track || track.type !== 'midi') return;
+      track.midiParams.humanize = parseFloat(e.target.value);
+      document.getElementById('midiHumanizeVal').textContent = `${Math.round(track.midiParams.humanize * 100)}%`;
+    });
+
+    // Audio DSP Inspector Listeners
+    ['eqLow', 'eqMid', 'eqHigh'].forEach(band => {
+      document.getElementById(band).addEventListener('input', (e) => {
+        const track = getSelectedTrack();
+        if (!track || track.type !== 'audio') return;
+        const val = parseFloat(e.target.value);
+        track.dsp[band] = val;
+        document.getElementById(`${band}Val`).textContent = `${val.toFixed(1)} dB`;
+        if (track._liveNodes) {
+          const map = { eqLow: 'lowShelf', eqMid: 'midPeak', eqHigh: 'highShelf' };
+          track._liveNodes[map[band]].gain.setTargetAtTime(val, state.audioCtx.currentTime, 0.02);
+        }
+      });
+    });
+
+    document.getElementById('btnResetEq').addEventListener('click', () => {
+      const track = getSelectedTrack();
+      if (!track || track.type !== 'audio') return;
+      track.dsp.eqLow = 0; track.dsp.eqMid = 0; track.dsp.eqHigh = 0;
+      syncInspectorUI();
+      if (track._liveNodes) {
+        track._liveNodes.lowShelf.gain.value = 0;
+        track._liveNodes.midPeak.gain.value = 0;
+        track._liveNodes.highShelf.gain.value = 0;
+      }
+    });
+
+    document.getElementById('gateEnabled').addEventListener('change', (e) => {
+      const track = getSelectedTrack();
+      if (track && track.type === 'audio') track.dsp.gateEnabled = e.target.checked;
+    });
+    document.getElementById('gateThreshold').addEventListener('input', (e) => {
+      const track = getSelectedTrack();
+      if (!track || track.type !== 'audio') return;
+      track.dsp.gateThreshold = parseInt(e.target.value, 10);
+      document.getElementById('gateThreshVal').textContent = `${track.dsp.gateThreshold} dB`;
+    });
+    document.getElementById('btnApplyGateToBuffer').addEventListener('click', applyNoiseGateToTrackBuffer);
+
+    document.getElementById('compPreset').addEventListener('change', (e) => {
+      const track = getSelectedTrack();
+      if (!track || track.type !== 'audio') return;
+      const presets = {
+        vocal: { thresh: -22, ratio: 3.5 },
+        drums: { thresh: -16, ratio: 5.5 },
+        glue: { thresh: -14, ratio: 2.0 }
+      };
+      const p = presets[e.target.value];
+      if (p) {
+        track.dsp.compThreshold = p.thresh;
+        track.dsp.compRatio = p.ratio;
+        syncInspectorUI();
+        if (track._liveNodes) {
+          track._liveNodes.comp.threshold.value = p.thresh;
+          track._liveNodes.comp.ratio.value = p.ratio;
+        }
+      }
+    });
+
+    document.getElementById('compThreshold').addEventListener('input', (e) => {
+      const track = getSelectedTrack();
+      if (!track || track.type !== 'audio') return;
+      track.dsp.compThreshold = parseFloat(e.target.value);
+      document.getElementById('compThreshVal').textContent = `${track.dsp.compThreshold} dB`;
+      if (track._liveNodes) track._liveNodes.comp.threshold.value = track.dsp.compThreshold;
+    });
+
+    document.getElementById('compRatio').addEventListener('input', (e) => {
+      const track = getSelectedTrack();
+      if (!track || track.type !== 'audio') return;
+      track.dsp.compRatio = parseFloat(e.target.value);
+      document.getElementById('compRatioVal').textContent = `${track.dsp.compRatio.toFixed(1)}:1`;
+      if (track._liveNodes) track._liveNodes.comp.ratio.value = track.dsp.compRatio;
+    });
+
+    document.getElementById('reverbType').addEventListener('change', (e) => {
+      const track = getSelectedTrack();
+      if (track && track.type === 'audio') track.dsp.reverbType = e.target.value;
+    });
+
+    document.getElementById('reverbMix').addEventListener('input', (e) => {
+      const track = getSelectedTrack();
+      if (!track || track.type !== 'audio') return;
+      track.dsp.reverbMix = parseFloat(e.target.value);
+      document.getElementById('reverbMixVal').textContent = `${Math.round(track.dsp.reverbMix * 100)}%`;
+      if (track._liveNodes) {
+        track._liveNodes.wetGain.gain.setTargetAtTime(track.dsp.reverbMix, state.audioCtx.currentTime, 0.02);
+        track._liveNodes.dryGain.gain.setTargetAtTime(1 - track.dsp.reverbMix * 0.45, state.audioCtx.currentTime, 0.02);
+      }
+    });
+
+    document.getElementById('btnBakeEffects').addEventListener('click', bakeDspEffectsIntoBuffer);
+
+    // Keyboard Shortcuts
+    window.addEventListener('keydown', (e) => {
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        state.isPlaying ? pausePlayback() : startPlayback();
+      } else if (e.code === 'Delete' || e.code === 'Backspace') {
+        if (state.selectionStart !== null && state.selectionEnd !== null) {
+          e.preventDefault();
+          performAudioEdit('cut');
+        }
+      } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        performRedo();
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        performRedo();
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        performUndo();
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      renderAllWaveforms();
+      drawRuler();
+    });
+
+    // Initial render
+    syncMuteAllCheckbox();
+    updateEditToolbarState();
+    drawRuler();
+  </script>
+</body>
+</html>
